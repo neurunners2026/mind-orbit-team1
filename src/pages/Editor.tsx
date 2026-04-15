@@ -8,6 +8,8 @@ import {
   useReactFlow,
   Background,
   Panel,
+  type Node,
+  type Edge,
   type NodeChange,
   type OnSelectionChangeParams,
 } from '@xyflow/react';
@@ -26,7 +28,9 @@ import {
 } from '../utils/db';
 import { layoutTree, deriveEdges, calcNewNodePosition } from '../utils/layout';
 import { getHiddenIds, computeNodeStats, buildChildrenMap } from '../utils/tree';
-import type { MindmapNodeData, EdgeStyleId, SyncMessage } from '../types/mindmap';
+import type { MindmapNodeData, RFNodeData, EdgeStyleId, SyncMessage } from '../types/mindmap';
+
+type RFNode = Node<RFNodeData, 'mindmap'>;
 import './Editor.css';
 
 const nodeTypes = { mindmap: MindmapNode };
@@ -37,8 +41,8 @@ function EditorInner() {
   const { mapId } = useParams<{ mapId: string }>();
   const navigate = useNavigate();
 
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
-  const [rfEdges, setRfEdges] = useEdgesState([]);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<RFNode>([]);
+  const [rfEdges, setRfEdges] = useEdgesState<Edge>([]);
 
   const [mapTitle, setMapTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -217,15 +221,13 @@ function EditorInner() {
             },
           ];
         } else {
-          loadedNodes = loadedNodes.map((n: Record<string, unknown>) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          loadedNodes = loadedNodes.map((n: any) => ({
             id: n.id as string,
             parentId: (n.parentId as string) || null,
             sortOrder: (n.sortOrder as number) ?? 0,
             collapsed: (n.collapsed as boolean) ?? false,
-            label:
-              (n.label as string) ||
-              ((n.data as Record<string, unknown>)?.label as string) ||
-              '노드',
+            label: (n.label as string) || n.data?.label || '노드',
             position: (n.position as { x: number; y: number }) || {
               x: 0,
               y: 0,
@@ -303,7 +305,7 @@ function EditorInner() {
   // 노드 드래그
   // ==========================================
   const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
+    (changes: NodeChange<RFNode>[]) => {
       onNodesChange(changes);
 
       const dimChanges = changes.filter(
@@ -343,8 +345,8 @@ function EditorInner() {
     let changed = false;
     rfNodes.forEach((rfn) => {
       const orig = allNodesRef.current.find((n) => n.id === rfn.id);
-      if (orig && orig.label !== (rfn.data as { label?: string })?.label) {
-        orig.label = (rfn.data as { label: string }).label;
+      if (orig && orig.label !== rfn.data.label) {
+        orig.label = rfn.data.label;
         orig.measuredWidth = undefined;
         orig.measuredHeight = undefined;
         changed = true;
@@ -686,7 +688,7 @@ function EditorInner() {
                 !!rfNodes.find(
                   (n) =>
                     n.id === selectedNodeId &&
-                    (n.data as { isRoot?: boolean })?.isRoot,
+                    n.data.isRoot,
                 )
               }
               title="노드 삭제 (Delete)"

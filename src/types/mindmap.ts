@@ -23,13 +23,14 @@ export interface MindmapNodeData {
 }
 
 /** React Flow 노드의 data 프로퍼티 */
-export interface RFNodeData {
+export type RFNodeData = {
   label: string;
   isRoot: boolean;
   childCount: number;
   descendantCount: number;
   collapsed: boolean;
-}
+  [key: string]: unknown;
+};
 
 /** 엣지 스타일 ID */
 export type EdgeStyleId = 'bezier' | 'smoothstep' | 'straight' | 'organic';
