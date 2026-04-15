@@ -1,10 +1,15 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import Editor from './pages/Editor';
+
 function App() {
   return (
-    <div>
-      <h1>React App</h1>
-      <p>Vite + React + TypeScript</p>
-    </div>
-  )
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/map/:mapId" element={<Editor />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-export default App
+export default App;

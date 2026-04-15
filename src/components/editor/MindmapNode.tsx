@@ -1,0 +1,228 @@
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import type { NodeProps, Node } from '@xyflow/react';
+import type { RFNodeData } from '../../types/mindmap';
+import './MindmapNode.css';
+
+type MindmapNodeType = Node<RFNodeData, 'mindmap'>;
+
+/**
+ * 마인드맵 커스텀 노드 컴포넌트
+ * - 더블클릭/탭으로 텍스트 편집
+ * - 노드 생성 직후 자동으로 편집 모드 진입 (mindmap:startEdit 이벤트)
+ * - 편집 중 Enter → 편집 완료 + 형제 노드 생성 (mindmap:addSibling)
+ * - 편집 중 Tab → 편집 완료 + 자식 노드 생성 (mindmap:addChild)
+ * - 자식이 있으면 접기/펼치기 토글 버튼
+ */
+function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(data.label || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { setNodes } = useReactFlow();
+
+  const isRoot = data.isRoot;
+  const isCollapsed = data.collapsed;
+  const descendantCount = data.descendantCount || 0;
+  const hasChildren = (data.childCount || 0) > 0;
+
+  // 편집 모드 진입 시 포커스
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const labelRef = useRef(data.label);
+  useEffect(() => {
+    labelRef.current = data.label;
+  }, [data.label]);
+
+  // 외부에서 편집 모드 진입 요청 수신 (노드 생성 직후)
+  useEffect(() => {
+    const handleStartEdit = (e: Event) => {
+      if ((e as CustomEvent).detail === id) {
+        setEditValue(labelRef.current || '');
+        setIsEditing(true);
+      }
+    };
+    window.addEventListener('mindmap:startEdit', handleStartEdit);
+    return () => window.removeEventListener('mindmap:startEdit', handleStartEdit);
+  }, [id]);
+
+  const startEditing = () => {
+    setEditValue(data.label || '');
+    setIsEditing(true);
+  };
+
+  // 편집 완료 후 라벨 업데이트
+  const commitLabel = useCallback(() => {
+    setIsEditing(false);
+    const newLabel = editValue.trim() || '새 노드';
+    if (newLabel !== data.label) {
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === id
+            ? { ...node, data: { ...node.data, label: newLabel } }
+            : node,
+        ),
+      );
+    }
+  }, [editValue, data.label, id, setNodes]);
+
+  const committedByKeyRef = useRef(false);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    if (e.repeat) return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation?.();
+      committedByKeyRef.current = true;
+      commitLabel();
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('mindmap:addSibling', { detail: id }),
+        );
+      }, 0);
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent?.stopImmediatePropagation?.();
+      committedByKeyRef.current = true;
+      commitLabel();
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('mindmap:addChild', { detail: id }),
+        );
+      }, 0);
+      return;
+    }
+    if (e.key === 'Escape') {
+      setEditValue(data.label || '');
+      setIsEditing(false);
+    }
+    e.stopPropagation();
+  };
+
+  const handleBlur = useCallback(() => {
+    if (committedByKeyRef.current) {
+      committedByKeyRef.current = false;
+      return;
+    }
+    commitLabel();
+  }, [commitLabel]);
+
+  const toggleCollapse = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(
+      new CustomEvent('mindmap:toggleCollapse', { detail: id }),
+    );
+  };
+
+  const handleNodeMouseDown = (e: React.MouseEvent) => {
+    if (!isEditing) return;
+    if (e.target === inputRef.current) return;
+    e.preventDefault();
+
+    const input = inputRef.current;
+    if (!input) return;
+
+    const rect = input.getBoundingClientRect();
+    input.focus();
+    if (e.clientX <= rect.left) {
+      input.setSelectionRange(0, 0);
+    } else if (e.clientX >= rect.right) {
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    }
+  };
+
+  return (
+    <div
+      className={`mindmap-node ${isRoot ? 'mindmap-node--root' : ''} ${
+        selected ? 'mindmap-node--selected' : ''
+      } ${isCollapsed ? 'mindmap-node--collapsed' : ''} ${
+        isEditing ? 'mindmap-node--editing nodrag nopan' : ''
+      }`}
+      onDoubleClick={startEditing}
+      onMouseDown={handleNodeMouseDown}
+      onTouchEnd={() => {
+        // 더블탭으로 편집 진입
+      }}
+    >
+      {!isRoot && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="mindmap-node__handle mindmap-node__handle--hidden"
+          isConnectable={false}
+        />
+      )}
+
+      <span className="mindmap-node__label-wrap">
+        <span className="mindmap-node__label" aria-hidden={isEditing}>
+          {isEditing ? editValue || ' ' : data.label || '새 노드'}
+        </span>
+        {isEditing && (
+          <input
+            ref={inputRef}
+            className="mindmap-node__input nodrag"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            maxLength={100}
+            size={1}
+          />
+        )}
+      </span>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="mindmap-node__handle mindmap-node__handle--hidden"
+        isConnectable={false}
+      />
+
+      {hasChildren && (
+        <button
+          className={`mindmap-node__collapse-btn nodrag ${
+            isCollapsed
+              ? 'mindmap-node__collapse-btn--count'
+              : 'mindmap-node__collapse-btn--chevron'
+          }`}
+          onClick={toggleCollapse}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          aria-label={isCollapsed ? '펼치기' : '접기'}
+          title={isCollapsed ? `펼치기 (자손 ${descendantCount})` : '접기'}
+        >
+          {isCollapsed ? (
+            <span className="mindmap-node__collapse-count">
+              {descendantCount}
+            </span>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M3 5l3 3 3-3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default memo(MindmapNode);
