@@ -180,6 +180,10 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
             onMouseDown={(e) => e.stopPropagation()}
             maxLength={100}
             size={1}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
           />
         )}
       </span>

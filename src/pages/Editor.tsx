@@ -49,12 +49,33 @@ function EditorInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyleId>('bezier');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const { fitView, zoomIn, zoomOut, getZoom } = useReactFlow();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialized = useRef(false);
 
   const allNodesRef = useRef<MindmapNodeData[]>([]);
+
+  // ==========================================
+  // 모바일 키보드 높이 감지 (visualViewport API)
+  // ==========================================
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const kbH = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardHeight(kbH > 50 ? kbH : 0);
+    };
+
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   // ==========================================
   // 가시성만 갱신 (위치 재계산 없음)
@@ -609,7 +630,11 @@ function EditorInner() {
         >
           <Background color="#2e2e3a" gap={20} size={1} />
 
-          <Panel position="bottom-right" className="editor__side-panels">
+          <Panel
+            position="bottom-right"
+            className="editor__side-panels"
+            style={keyboardHeight > 0 ? { marginBottom: `${keyboardHeight + 16}px` } : undefined}
+          >
             <div className="editor__edge-style-picker">
               {EDGE_STYLES.map((s) => (
                 <button
@@ -641,7 +666,11 @@ function EditorInner() {
             </div>
           </Panel>
 
-          <Panel position="bottom-center" className="editor__toolbar">
+          <Panel
+            position="bottom-center"
+            className="editor__toolbar"
+            style={keyboardHeight > 0 ? { marginBottom: `${keyboardHeight + 16}px` } : undefined}
+          >
             <button
               className="editor__tool-btn"
               onClick={() => addChildNode()}
