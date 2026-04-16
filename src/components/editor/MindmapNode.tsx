@@ -25,13 +25,18 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
   const descendantCount = data.descendantCount || 0;
   const hasChildren = (data.childCount || 0) > 0;
 
-  // 편집 모드 진입 시 포커스
+  // 편집 모드 진입 시 포커스 + 중앙 정렬 요청 이벤트 발행
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
+      // Editor가 이 이벤트를 받아 해당 노드를 뷰포트 중앙으로 옮기고
+      // 필요 시 줌 레벨도 가독 가능한 범위로 보정
+      window.dispatchEvent(
+        new CustomEvent('mindmap:editStarted', { detail: id }),
+      );
     }
-  }, [isEditing]);
+  }, [isEditing, id]);
 
   const labelRef = useRef(data.label);
   useEffect(() => {

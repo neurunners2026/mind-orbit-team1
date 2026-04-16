@@ -51,31 +51,160 @@ function EditorInner() {
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyleId>('bezier');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  const { fitView, zoomIn, zoomOut, getZoom } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getZoom, setCenter, setViewport, getNode } = useReactFlow();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialized = useRef(false);
 
   const allNodesRef = useRef<MindmapNodeData[]>([]);
+  const keyboardHeightRef = useRef(0);
+  useEffect(() => {
+    keyboardHeightRef.current = keyboardHeight;
+  }, [keyboardHeight]);
 
   // ==========================================
-  // 모바일 키보드 높이 감지 (visualViewport API)
+  // 모바일 키보드 높이 감지 + FAB 컨테이너를 visual viewport에 동기화
+  //
+  // iOS Safari에서 position:fixed의 키보드 처리가 불안정하므로,
+  // visualViewport API로 FAB 컨테이너의 transform/height를
+  // 실제 보이는 영역에 정확히 맞춤.
+  //
+  // [컨테이너 전략]
+  // .editor__fabs: position:fixed; top:0; left:0; right:0
+  // JS로 transform: translateY(vv.offsetTop), height: vv.height 적용
+  // → 컨테이너가 visual viewport와 일치
+  // → 내부 FAB은 position:absolute; bottom:X 로 안정적 배치
   // ==========================================
+  const stableHeightRef = useRef(window.innerHeight);
+  const fabContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
 
     const update = () => {
-      const kbH = window.innerHeight - vv.height - vv.offsetTop;
+      // 키보드 높이 계산 (setCenter 오프셋용)
+      if (window.innerHeight > stableHeightRef.current) {
+        stableHeightRef.current = window.innerHeight;
+      }
+      const kbH = stableHeightRef.current - window.innerHeight;
       setKeyboardHeight(kbH > 50 ? kbH : 0);
+
+      // FAB 컨테이너를 visual viewport에 동기화
+      const container = fabContainerRef.current;
+      if (container) {
+        container.style.transform = `translateY(${vv.offsetTop}px)`;
+        container.style.height = `${vv.height}px`;
+      }
     };
 
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
+    update(); // 초기값
     return () => {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
     };
   }, []);
+
+  // ==========================================
+  // 편집 모드 진입 시 해당 노드를 보이는 영역의 상단 ~1/3 지점에 배치 (터치 디바이스 한정)
+  //
+  // 키보드 높이를 정확히 아는 것은 iOS Safari에서 어려우므로,
+  // visualViewport.height를 "보이는 영역"으로 쓰고
+  // 수직 가운데 대신 상단 1/3을 목표로 함 (키보드 높이 오차에 강건함).
+  //
+  // - Case A (키보드 이미 열림): 즉시 배치
+  // - Case C (키보드 새로 열림): VV resize 안정화 후 배치
+  // PC에서는 사용자의 패닝/줌을 존중하기 위해 개입하지 않음.
+  // ==========================================
+  useEffect(() => {
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    if (!isTouchDevice) return;
+
+    const handleEditStarted = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail as string;
+      const node = getNode(nodeId);
+      if (!node) return;
+
+      const currentZoom = getZoom();
+      const targetZoom =
+        currentZoom < 0.8 ? 1 : currentZoom > 2 ? 2 : currentZoom;
+
+      const w = node.measured?.width ?? 100;
+      const h = node.measured?.height ?? 40;
+      const cx = node.position.x + w / 2;
+      const cy = node.position.y + h / 2;
+
+      const doPosition = () => {
+        const vv = window.visualViewport;
+        const canvasEl = document.querySelector('.editor__canvas');
+        if (!vv || !canvasEl) {
+          setCenter(cx, cy, { zoom: targetZoom, duration: 300 });
+          return;
+        }
+
+        const canvasRect = canvasEl.getBoundingClientRect();
+        // 캔버스 영역 중 실제로 보이는 부분의 높이
+        const vvBottom = vv.offsetTop + vv.height;
+        const visibleH = Math.max(
+          vvBottom - canvasRect.top,
+          200, // 최소값 안전장치
+        );
+
+        // 노드를 보이는 영역의 상단 1/3 지점에 배치
+        const targetLocalY = visibleH * 0.33;
+        // 수평은 캔버스 중앙
+        const targetLocalX = canvasRect.width / 2;
+
+        // setViewport: screenX = vpX + flowX * zoom
+        const vpX = targetLocalX - cx * targetZoom;
+        const vpY = targetLocalY - cy * targetZoom;
+        setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: 300 });
+      };
+
+      if (keyboardHeightRef.current > 0) {
+        // Case A: 키보드가 이미 열린 상태 → 즉시 배치
+        doPosition();
+      } else {
+        // Case C: 키보드가 새로 올라오는 중 →
+        // visualViewport resize가 멈출 때까지(≈150ms) 대기 후 배치
+        const vv = window.visualViewport;
+        if (!vv) {
+          doPosition();
+          return;
+        }
+
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        let fallbackTimer: ReturnType<typeof setTimeout>;
+
+        const cleanup = () => {
+          clearTimeout(debounceTimer);
+          clearTimeout(fallbackTimer);
+          vv.removeEventListener('resize', onVVResize);
+        };
+
+        const onVVResize = () => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            cleanup();
+            doPosition();
+          }, 150);
+        };
+
+        vv.addEventListener('resize', onVVResize);
+
+        // 안전장치: 600ms 내에 resize 이벤트가 없으면 그냥 배치
+        fallbackTimer = setTimeout(() => {
+          cleanup();
+          doPosition();
+        }, 600);
+      }
+    };
+
+    window.addEventListener('mindmap:editStarted', handleEditStarted);
+    return () =>
+      window.removeEventListener('mindmap:editStarted', handleEditStarted);
+  }, [getNode, getZoom, setCenter, setViewport]);
 
   // ==========================================
   // 가시성만 갱신 (위치 재계산 없음)
@@ -397,7 +526,7 @@ function EditorInner() {
   // 노드 추가: 자식 (Tab)
   // ==========================================
   const addChildNode = useCallback(
-    (overrideParentId?: string) => {
+    (overrideParentId?: string, autoEdit = true) => {
       const parentId =
         (typeof overrideParentId === 'string' ? overrideParentId : null) ||
         selectedNodeId ||
@@ -434,9 +563,11 @@ function EditorInner() {
         setRfNodes((nds) =>
           nds.map((n) => ({ ...n, selected: n.id === newId })),
         );
-        window.dispatchEvent(
-          new CustomEvent('mindmap:startEdit', { detail: newId }),
-        );
+        if (autoEdit) {
+          window.dispatchEvent(
+            new CustomEvent('mindmap:startEdit', { detail: newId }),
+          );
+        }
       }, 80);
     },
     [selectedNodeId, refreshVisibility, triggerAutoSave, setRfNodes],
@@ -446,7 +577,7 @@ function EditorInner() {
   // 노드 추가: 형제 (Enter)
   // ==========================================
   const addSiblingNode = useCallback(
-    (overrideNodeId?: string) => {
+    (overrideNodeId?: string, autoEdit = true) => {
       const targetId =
         (typeof overrideNodeId === 'string' ? overrideNodeId : null) ||
         selectedNodeId;
@@ -454,7 +585,7 @@ function EditorInner() {
 
       const targetNode = allNodesRef.current.find((n) => n.id === targetId);
       if (!targetNode?.parentId) {
-        addChildNode(targetId);
+        addChildNode(targetId, autoEdit);
         return;
       }
 
@@ -484,9 +615,11 @@ function EditorInner() {
         setRfNodes((nds) =>
           nds.map((n) => ({ ...n, selected: n.id === newId })),
         );
-        window.dispatchEvent(
-          new CustomEvent('mindmap:startEdit', { detail: newId }),
-        );
+        if (autoEdit) {
+          window.dispatchEvent(
+            new CustomEvent('mindmap:startEdit', { detail: newId }),
+          );
+        }
       }, 80);
     },
     [selectedNodeId, addChildNode, refreshVisibility, triggerAutoSave, setRfNodes],
@@ -603,6 +736,21 @@ function EditorInner() {
         rightAction={
           <div className="editor__header-actions">
             <span className="editor__auto-save-badge">자동 저장</span>
+            <button
+              className="editor__fitview-btn"
+              onClick={() => fitView({ padding: 0.3, duration: 300 })}
+              title="전체 보기"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
         }
       />
@@ -633,7 +781,6 @@ function EditorInner() {
           <Panel
             position="bottom-right"
             className="editor__side-panels"
-            style={keyboardHeight > 0 ? { marginBottom: `${keyboardHeight + 16}px` } : undefined}
           >
             <div className="editor__edge-style-picker">
               {EDGE_STYLES.map((s) => (
@@ -666,91 +813,84 @@ function EditorInner() {
             </div>
           </Panel>
 
-          <Panel
-            position="bottom-center"
-            className="editor__toolbar"
-            style={keyboardHeight > 0 ? { marginBottom: `${keyboardHeight + 16}px` } : undefined}
-          >
-            <button
-              className="editor__tool-btn"
-              onClick={() => addChildNode()}
-              title="자식 노드 추가 (Tab)"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 5v14M5 12h14"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="editor__tool-label">추가</span>
-            </button>
-            <button
-              className="editor__tool-btn"
-              onClick={() => addSiblingNode()}
-              title="형제 노드 추가 (Enter)"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 5v14M5 12h14"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeDasharray="3 3"
-                />
-              </svg>
-              <span className="editor__tool-label">형제</span>
-            </button>
-            <button
-              className="editor__tool-btn editor__tool-btn--danger"
-              onClick={deleteSelectedNode}
-              disabled={
-                !selectedNodeId ||
-                !!rfNodes.find(
-                  (n) =>
-                    n.id === selectedNodeId &&
-                    n.data.isRoot,
-                )
-              }
-              title="노드 삭제 (Delete)"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="editor__tool-label">삭제</span>
-            </button>
-            <button
-              className="editor__tool-btn"
-              onClick={() => fitView({ padding: 0.3, duration: 300 })}
-              title="전체 보기"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="editor__tool-label">맞춤</span>
-            </button>
-          </Panel>
         </ReactFlow>
+      </div>
+
+      {/* 플로팅 FAB — position:fixed 컨테이너를 VV API로 visual viewport에 동기화.
+           내부 FAB은 position:absolute; bottom:X 로 배치하여 키보드 위에 안정적으로 표시. */}
+      <div className="editor__fabs" ref={fabContainerRef}>
+        {/* 좌측 하단: 삭제 */}
+        <button
+          className="editor__fab editor__fab--delete"
+          onClick={deleteSelectedNode}
+          disabled={
+            !selectedNodeId ||
+            !!rfNodes.find(
+              (n) => n.id === selectedNodeId && n.data.isRoot,
+            )
+          }
+          title="노드 삭제 (Delete)"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+
+        {/* 우측 하단: 형제 추가 + 자식 추가 (아래→위 순서) */}
+        <div className="editor__fab-group-right">
+          <button
+            className="editor__fab editor__fab--add"
+            onTouchStart={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const isTouch = window.matchMedia('(pointer: coarse)').matches;
+              addSiblingNode(undefined, !(isTouch && keyboardHeightRef.current === 0));
+            }}
+            title="형제 노드 추가 (Enter)"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeDasharray="3 3"
+              />
+            </svg>
+          </button>
+          <button
+            className="editor__fab editor__fab--add"
+            onTouchStart={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const isTouch = window.matchMedia('(pointer: coarse)').matches;
+              addChildNode(undefined, !(isTouch && keyboardHeightRef.current === 0));
+            }}
+            title="자식 노드 추가 (Tab)"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="editor__hint">

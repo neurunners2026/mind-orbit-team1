@@ -77,6 +77,16 @@
   text-overflow: ellipsis;
 }
 
+/* 터치 디바이스에서는 16px 이상으로 승격.
+   iOS Safari가 16px 미만 input에 포커스할 때 자동 줌인하는 동작 방지
+   (레이아웃 뷰포트가 어긋나 횡스크롤이 생기는 근본 원인) */
+@media (pointer: coarse) {
+  .mindmap-node__label,
+  .mindmap-node__input {
+    font-size: 1rem;
+  }
+}
+
 .mindmap-node__input {
   background: transparent;
   border: none;
