@@ -51,15 +51,30 @@ function EditorInner() {
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyleId>('bezier');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
+  // 미선택 시 루트 노드를 "사실상 선택된 노드"로 취급
+  const rootNodeId = rfNodes.find((n) => n.data.isRoot)?.id ?? null;
+  const effectiveNodeId = selectedNodeId || rootNodeId;
+  const isEffectiveRoot = effectiveNodeId === rootNodeId;
+
   const { fitView, zoomIn, zoomOut, getZoom, setCenter, setViewport, getNode } = useReactFlow();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialized = useRef(false);
 
   const allNodesRef = useRef<MindmapNodeData[]>([]);
   const keyboardHeightRef = useRef(0);
+  // iOS Safari: touchstart에서 preventDefault()하면 click이 발생하지 않을 수 있음.
+  // 액션을 touchstart에서 실행하고, click은 마우스 전용 fallback으로 분리.
+  // 이 플래그로 touch→click 이중 실행을 방지.
+  const touchFiredRef = useRef(false);
   useEffect(() => {
     keyboardHeightRef.current = keyboardHeight;
   }, [keyboardHeight]);
+
+  // iOS Safari에서 프로그래밍적 focus()로 키보드를 띄우려면
+  // 사용자 제스처의 동기 호출 스택 안에서 input을 focus해야 함.
+  // FAB 탭 → (동기) 프록시 input focus → 키보드 열림 →
+  // (비동기) 실제 노드 input이 마운트되면 포커스 이전 → 키보드 유지
+  const focusProxyRef = useRef<HTMLInputElement>(null);
 
   // ==========================================
   // 모바일 키보드 높이 감지 + FAB 컨테이너를 visual viewport에 동기화
@@ -132,8 +147,11 @@ function EditorInner() {
 
       const w = node.measured?.width ?? 100;
       const h = node.measured?.height ?? 40;
-      const cx = node.position.x + w / 2;
-      const cy = node.position.y + h / 2;
+      const cx = (node.position?.x ?? 0) + w / 2;
+      const cy = (node.position?.y ?? 0) + h / 2;
+
+      // NaN 방어 — 좌표가 유효하지 않으면 센터링 생략
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
 
       const doPosition = () => {
         const vv = window.visualViewport;
@@ -144,21 +162,17 @@ function EditorInner() {
         }
 
         const canvasRect = canvasEl.getBoundingClientRect();
-        // 캔버스 영역 중 실제로 보이는 부분의 높이
         const vvBottom = vv.offsetTop + vv.height;
-        const visibleH = Math.max(
-          vvBottom - canvasRect.top,
-          200, // 최소값 안전장치
-        );
+        const visibleH = Math.max(vvBottom - canvasRect.top, 200);
 
-        // 노드를 보이는 영역의 상단 1/3 지점에 배치
         const targetLocalY = visibleH * 0.33;
-        // 수평은 캔버스 중앙
         const targetLocalX = canvasRect.width / 2;
 
-        // setViewport: screenX = vpX + flowX * zoom
         const vpX = targetLocalX - cx * targetZoom;
         const vpY = targetLocalY - cy * targetZoom;
+
+        // NaN이면 setViewport 호출하지 않음
+        if (!Number.isFinite(vpX) || !Number.isFinite(vpY)) return;
         setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: 300 });
       };
 
@@ -372,17 +386,22 @@ function EditorInner() {
           ];
         } else {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          loadedNodes = loadedNodes.map((n: any) => ({
-            id: n.id as string,
-            parentId: (n.parentId as string) || null,
-            sortOrder: (n.sortOrder as number) ?? 0,
-            collapsed: (n.collapsed as boolean) ?? false,
-            label: (n.label as string) || n.data?.label || '노드',
-            position: (n.position as { x: number; y: number }) || {
-              x: 0,
-              y: 0,
-            },
-          }));
+          loadedNodes = loadedNodes.map((n: any) => {
+            const rawLabel = n.label ?? n.data?.label;
+            const pos = n.position as { x: number; y: number } | undefined;
+            return {
+              id: n.id as string,
+              parentId: (n.parentId as string) || null,
+              sortOrder: (n.sortOrder as number) ?? 0,
+              collapsed: (n.collapsed as boolean) ?? false,
+              // ?? 를 사용하여 빈 문자열 ''도 유효한 값으로 보존
+              label: typeof rawLabel === 'string' ? rawLabel : '노드',
+              position:
+                pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)
+                  ? pos
+                  : { x: 0, y: 0 },
+            };
+          });
         }
 
         allNodesRef.current = loadedNodes;
@@ -526,7 +545,7 @@ function EditorInner() {
   // 노드 추가: 자식 (Tab)
   // ==========================================
   const addChildNode = useCallback(
-    (overrideParentId?: string, autoEdit = true) => {
+    (overrideParentId?: string) => {
       const parentId =
         (typeof overrideParentId === 'string' ? overrideParentId : null) ||
         selectedNodeId ||
@@ -548,7 +567,7 @@ function EditorInner() {
         parentId,
         sortOrder: siblingCount,
         collapsed: false,
-        label: '새 노드',
+        label: '',
         position: { x: 0, y: 0 },
       };
 
@@ -563,11 +582,9 @@ function EditorInner() {
         setRfNodes((nds) =>
           nds.map((n) => ({ ...n, selected: n.id === newId })),
         );
-        if (autoEdit) {
-          window.dispatchEvent(
-            new CustomEvent('mindmap:startEdit', { detail: newId }),
-          );
-        }
+        window.dispatchEvent(
+          new CustomEvent('mindmap:startEdit', { detail: newId }),
+        );
       }, 80);
     },
     [selectedNodeId, refreshVisibility, triggerAutoSave, setRfNodes],
@@ -577,17 +594,15 @@ function EditorInner() {
   // 노드 추가: 형제 (Enter)
   // ==========================================
   const addSiblingNode = useCallback(
-    (overrideNodeId?: string, autoEdit = true) => {
+    (overrideNodeId?: string) => {
       const targetId =
         (typeof overrideNodeId === 'string' ? overrideNodeId : null) ||
         selectedNodeId;
       if (!targetId) return;
 
       const targetNode = allNodesRef.current.find((n) => n.id === targetId);
-      if (!targetNode?.parentId) {
-        addChildNode(targetId, autoEdit);
-        return;
-      }
+      // 루트 노드(parentId 없음)에서는 형제 추가 불가
+      if (!targetNode?.parentId) return;
 
       const parentId = targetNode.parentId;
       const siblingCount = allNodesRef.current.filter(
@@ -600,7 +615,7 @@ function EditorInner() {
         parentId,
         sortOrder: siblingCount,
         collapsed: false,
-        label: '새 노드',
+        label: '',
         position: { x: 0, y: 0 },
       };
 
@@ -615,11 +630,9 @@ function EditorInner() {
         setRfNodes((nds) =>
           nds.map((n) => ({ ...n, selected: n.id === newId })),
         );
-        if (autoEdit) {
-          window.dispatchEvent(
-            new CustomEvent('mindmap:startEdit', { detail: newId }),
-          );
-        }
+        window.dispatchEvent(
+          new CustomEvent('mindmap:startEdit', { detail: newId }),
+        );
       }, 80);
     },
     [selectedNodeId, addChildNode, refreshVisibility, triggerAutoSave, setRfNodes],
@@ -823,12 +836,7 @@ function EditorInner() {
         <button
           className="editor__fab editor__fab--delete"
           onClick={deleteSelectedNode}
-          disabled={
-            !selectedNodeId ||
-            !!rfNodes.find(
-              (n) => n.id === selectedNodeId && n.data.isRoot,
-            )
-          }
+          disabled={isEffectiveRoot}
           title="노드 삭제 (Delete)"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -842,15 +850,25 @@ function EditorInner() {
           </svg>
         </button>
 
-        {/* 우측 하단: 형제 추가 + 자식 추가 (아래→위 순서) */}
+        {/* 우측 하단: 형제 추가 + 자식 추가 (아래→위 순서)
+             iOS Safari: touchstart에서 preventDefault() 후 click이 안 터질 수 있으므로
+             액션을 touchstart에서 직접 실행. click은 마우스 전용 fallback. */}
         <div className="editor__fab-group-right">
           <button
             className="editor__fab editor__fab--add"
-            onTouchStart={(e) => e.preventDefault()}
+            disabled={isEffectiveRoot}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              touchFiredRef.current = true;
+              if (keyboardHeightRef.current === 0) {
+                focusProxyRef.current?.focus();
+              }
+              addSiblingNode();
+            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
-              const isTouch = window.matchMedia('(pointer: coarse)').matches;
-              addSiblingNode(undefined, !(isTouch && keyboardHeightRef.current === 0));
+              if (touchFiredRef.current) { touchFiredRef.current = false; return; }
+              addSiblingNode();
             }}
             title="형제 노드 추가 (Enter)"
           >
@@ -873,11 +891,18 @@ function EditorInner() {
           </button>
           <button
             className="editor__fab editor__fab--add"
-            onTouchStart={(e) => e.preventDefault()}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              touchFiredRef.current = true;
+              if (keyboardHeightRef.current === 0) {
+                focusProxyRef.current?.focus();
+              }
+              addChildNode();
+            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
-              const isTouch = window.matchMedia('(pointer: coarse)').matches;
-              addChildNode(undefined, !(isTouch && keyboardHeightRef.current === 0));
+              if (touchFiredRef.current) { touchFiredRef.current = false; return; }
+              addChildNode();
             }}
             title="자식 노드 추가 (Tab)"
           >
@@ -892,6 +917,14 @@ function EditorInner() {
           </button>
         </div>
       </div>
+
+      {/* iOS Safari 키보드 선점용 프록시 input — 화면 밖에 숨김 */}
+      <input
+        ref={focusProxyRef}
+        className="editor__focus-proxy"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
 
       <div className="editor__hint">
         <kbd>Tab</kbd> 자식 추가 &nbsp;<kbd>Enter</kbd> 형제 추가 &nbsp;

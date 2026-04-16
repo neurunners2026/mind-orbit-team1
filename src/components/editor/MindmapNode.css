@@ -61,6 +61,7 @@
 .mindmap-node__label-wrap {
   display: inline-grid;
   min-width: 20px;
+  min-height: 1.4em; /* 빈 라벨이어도 line-height만큼 높이 유지 */
 }
 
 /* 라벨과 input을 같은 grid cell에 겹쳐 배치 → 둘 다 인라인 흐름으로 렌더되어 수직 정렬 일치 */

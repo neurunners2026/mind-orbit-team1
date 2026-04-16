@@ -255,6 +255,18 @@
   text-align: center;
 }
 
+/* iOS Safari 키보드 선점용 프록시 input — 화면 밖에 배치 */
+.editor__focus-proxy {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* iOS 자동 줌 방지 */
+  pointer-events: none;
+}
+
 /* 키보드 힌트 (PC만) */
 .editor__hint {
   display: none;

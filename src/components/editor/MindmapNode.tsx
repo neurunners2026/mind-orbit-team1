@@ -63,7 +63,7 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
   // 편집 완료 후 라벨 업데이트
   const commitLabel = useCallback(() => {
     setIsEditing(false);
-    const newLabel = editValue.trim() || '새 노드';
+    const newLabel = editValue.trim();
     if (newLabel !== data.label) {
       setNodes((nodes) =>
         nodes.map((node) =>
@@ -171,7 +171,7 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
 
       <span className="mindmap-node__label-wrap">
         <span className="mindmap-node__label" aria-hidden={isEditing}>
-          {isEditing ? editValue || ' ' : data.label || '새 노드'}
+          {isEditing ? editValue : data.label}
         </span>
         {isEditing && (
           <input
