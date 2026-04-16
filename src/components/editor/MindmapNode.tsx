@@ -156,9 +156,6 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
       }`}
       onDoubleClick={startEditing}
       onMouseDown={handleNodeMouseDown}
-      onTouchEnd={() => {
-        // 더블탭으로 편집 진입
-      }}
     >
       {!isRoot && (
         <Handle

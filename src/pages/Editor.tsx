@@ -49,7 +49,6 @@ function EditorInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyleId>('bezier');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // 미선택 시 루트 노드를 "사실상 선택된 노드"로 취급
   const rootNodeId = rfNodes.find((n) => n.data.isRoot)?.id ?? null;
@@ -61,14 +60,12 @@ function EditorInner() {
   const isInitialized = useRef(false);
 
   const allNodesRef = useRef<MindmapNodeData[]>([]);
+  // keyboardHeight는 렌더에 사용하지 않으므로 ref만으로 관리 (불필요한 리렌더 방지)
   const keyboardHeightRef = useRef(0);
   // iOS Safari: touchstart에서 preventDefault()하면 click이 발생하지 않을 수 있음.
   // 액션을 touchstart에서 실행하고, click은 마우스 전용 fallback으로 분리.
   // 이 플래그로 touch→click 이중 실행을 방지.
   const touchFiredRef = useRef(false);
-  useEffect(() => {
-    keyboardHeightRef.current = keyboardHeight;
-  }, [keyboardHeight]);
 
   // iOS Safari에서 프로그래밍적 focus()로 키보드를 띄우려면
   // 사용자 제스처의 동기 호출 스택 안에서 input을 focus해야 함.
@@ -102,7 +99,7 @@ function EditorInner() {
         stableHeightRef.current = window.innerHeight;
       }
       const kbH = stableHeightRef.current - window.innerHeight;
-      setKeyboardHeight(kbH > 50 ? kbH : 0);
+      keyboardHeightRef.current = kbH > 50 ? kbH : 0;
 
       // FAB 컨테이너를 visual viewport에 동기화
       const container = fabContainerRef.current;
@@ -548,21 +545,10 @@ function EditorInner() {
   );
 
   // ==========================================
-  // 노드 추가: 자식 (Tab)
+  // 노드 삽입 공통 로직: allNodesRef에 추가 → 위치 계산 → 선택 → 편집 진입
   // ==========================================
-  const addChildNode = useCallback(
-    (overrideParentId?: string) => {
-      const parentId =
-        (typeof overrideParentId === 'string' ? overrideParentId : null) ||
-        selectedNodeId ||
-        allNodesRef.current.find((n) => !n.parentId)?.id;
-      if (!parentId) return;
-
-      const parentNode = allNodesRef.current.find((n) => n.id === parentId);
-      if (parentNode?.collapsed) {
-        parentNode.collapsed = false;
-      }
-
+  const insertNodeAndEdit = useCallback(
+    (parentId: string) => {
       const siblingCount = allNodesRef.current.filter(
         (n) => n.parentId === parentId,
       ).length;
@@ -593,7 +579,28 @@ function EditorInner() {
         );
       }, 80);
     },
-    [selectedNodeId, refreshVisibility, triggerAutoSave, setRfNodes],
+    [refreshVisibility, triggerAutoSave, setRfNodes],
+  );
+
+  // ==========================================
+  // 노드 추가: 자식 (Tab)
+  // ==========================================
+  const addChildNode = useCallback(
+    (overrideParentId?: string) => {
+      const parentId =
+        (typeof overrideParentId === 'string' ? overrideParentId : null) ||
+        selectedNodeId ||
+        allNodesRef.current.find((n) => !n.parentId)?.id;
+      if (!parentId) return;
+
+      const parentNode = allNodesRef.current.find((n) => n.id === parentId);
+      if (parentNode?.collapsed) {
+        parentNode.collapsed = false;
+      }
+
+      insertNodeAndEdit(parentId);
+    },
+    [selectedNodeId, insertNodeAndEdit],
   );
 
   // ==========================================
@@ -610,38 +617,9 @@ function EditorInner() {
       // 루트 노드(parentId 없음)에서는 형제 추가 불가
       if (!targetNode?.parentId) return;
 
-      const parentId = targetNode.parentId;
-      const siblingCount = allNodesRef.current.filter(
-        (n) => n.parentId === parentId,
-      ).length;
-
-      const newId = generateId();
-      const newNode: MindmapNodeData = {
-        id: newId,
-        parentId,
-        sortOrder: siblingCount,
-        collapsed: false,
-        label: '',
-        position: { x: 0, y: 0 },
-      };
-
-      allNodesRef.current = [...allNodesRef.current, newNode];
-      newNode.position = calcNewNodePosition(allNodesRef.current, newId);
-
-      refreshVisibility();
-      triggerAutoSave();
-      setSelectedNodeId(newId);
-
-      setTimeout(() => {
-        setRfNodes((nds) =>
-          nds.map((n) => ({ ...n, selected: n.id === newId })),
-        );
-        window.dispatchEvent(
-          new CustomEvent('mindmap:startEdit', { detail: newId }),
-        );
-      }, 80);
+      insertNodeAndEdit(targetNode.parentId);
     },
-    [selectedNodeId, addChildNode, refreshVisibility, triggerAutoSave, setRfNodes],
+    [selectedNodeId, insertNodeAndEdit],
   );
 
   // ==========================================
