@@ -14,6 +14,11 @@ db.version(1).stores({
   nodes: 'id, mapId, parentId',
 });
 
+db.version(2).stores({
+  mindmaps: 'id, updatedAt, isFavorite',
+  nodes: 'id, mapId, parentId',
+});
+
 export default db;
 
 // ============================================
@@ -151,6 +156,23 @@ export async function updateMindmapSettings(
     updatedAt: new Date().toISOString(),
   });
   broadcast('mindmap:meta:changed', { mapId });
+}
+
+/** 즐겨찾기 토글 */
+export async function toggleFavorite(mapId: string, isFavorite: boolean): Promise<void> {
+  await db.table('mindmaps').update(mapId, { isFavorite });
+  broadcast('mindmap:list:changed', { mapId });
+}
+
+/** 다중 마인드맵 일괄 삭제 */
+export async function deleteMindmaps(mapIds: string[]): Promise<void> {
+  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
+    await db.table('mindmaps').bulkDelete(mapIds);
+    for (const id of mapIds) {
+      await db.table('nodes').where('mapId').equals(id).delete();
+    }
+  });
+  broadcast('mindmap:list:changed', { deleted: true });
 }
 
 /**
