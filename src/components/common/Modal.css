@@ -3,10 +3,11 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
   padding: var(--spacing-lg);
+  padding-top: 20vh; /* 상단에서 20% 지점 — 키보드가 올라와도 가려지지 않음 */
   animation: fadeIn 200ms ease;
 }
 

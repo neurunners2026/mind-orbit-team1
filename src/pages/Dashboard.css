@@ -84,25 +84,49 @@
   text-overflow: ellipsis;
 }
 
+.dashboard__card-title-input {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -3px -7px;
+  outline: none;
+  width: calc(100% + 14px);
+}
+
 .dashboard__card-date {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
-.dashboard__card-delete {
+.dashboard__card-actions {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin-right: var(--spacing-xs);
+}
+
+.dashboard__card-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   color: var(--color-text-muted);
   transition: all var(--transition-fast);
-  flex-shrink: 0;
-  margin-right: var(--spacing-sm);
   border-radius: var(--radius-sm);
 }
 
-.dashboard__card-delete:hover {
+.dashboard__card-action-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.dashboard__card-action-btn--danger:hover {
   color: var(--color-danger);
   background: var(--color-danger-light);
 }
