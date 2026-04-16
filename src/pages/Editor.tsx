@@ -23,6 +23,7 @@ import {
   getNodesByMapId,
   saveMapData,
   updateMindmapSettings,
+  updateMindmapTitle,
   generateId,
   subscribeSync,
 } from '../utils/db';
@@ -730,6 +731,10 @@ function EditorInner() {
       <Header
         title={mapTitle}
         showBack
+        onTitleChange={(newTitle) => {
+          setMapTitle(newTitle);
+          updateMindmapTitle(mapId!, newTitle);
+        }}
         rightAction={
           <div className="editor__header-actions">
             <span className="editor__auto-save-badge">자동 저장</span>

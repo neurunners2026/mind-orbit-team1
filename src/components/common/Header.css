@@ -49,6 +49,33 @@
   text-overflow: ellipsis;
 }
 
+.header__title--editable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background var(--transition-fast);
+}
+
+.header__title--editable:hover {
+  background: var(--color-surface-hover);
+}
+
+.header__title-input {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  outline: none;
+  min-width: 120px;
+  max-width: 100%;
+}
+
 .header__right {
   display: flex;
   align-items: center;

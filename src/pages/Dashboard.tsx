@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Modal from '../components/common/Modal';
@@ -7,6 +7,7 @@ import {
   getAllMindmaps,
   createMindmap,
   deleteMindmap,
+  updateMindmapTitle,
   subscribeSync,
 } from '../utils/db';
 import type { Mindmap, SyncMessage } from '../types/mindmap';
@@ -90,6 +91,33 @@ function Dashboard() {
     return date.toLocaleDateString('ko-KR');
   };
 
+  // 카드 제목 인라인 편집
+  const [editingMapId, setEditingMapId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingMapId && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingMapId]);
+
+  const commitCardTitle = useCallback(() => {
+    if (!editingMapId) return;
+    const trimmed = editingTitle.trim();
+    const mapId = editingMapId;
+    setEditingMapId(null);
+    if (trimmed && trimmed !== mindmaps.find((m) => m.id === mapId)?.title) {
+      updateMindmapTitle(mapId, trimmed).then(() => loadMindmaps());
+    }
+  }, [editingMapId, editingTitle, mindmaps, loadMindmaps]);
+
+  const startEditingCard = (map: Mindmap) => {
+    setEditingMapId(map.id);
+    setEditingTitle(map.title);
+  };
+
   const deleteTarget = mindmaps.find((m) => m.id === showDeleteModal);
 
   return (
@@ -151,33 +179,78 @@ function Dashboard() {
           <ul className="dashboard__list">
             {mindmaps.map((map) => (
               <li key={map.id} className="dashboard__card">
-                <button
-                  className="dashboard__card-body"
-                  onClick={() => navigate(`/map/${map.id}`)}
-                >
-                  <span className="dashboard__card-title">{map.title}</span>
-                  <span className="dashboard__card-date">
-                    {formatDate(map.updatedAt)}
-                  </span>
-                </button>
-                <button
-                  className="dashboard__card-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteModal(map.id);
-                  }}
-                  aria-label={`${map.title} 삭제`}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                {editingMapId === map.id ? (
+                  <div className="dashboard__card-body">
+                    <input
+                      ref={titleInputRef}
+                      className="dashboard__card-title-input"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onBlur={commitCardTitle}
+                      onKeyDown={(e) => {
+                        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                        if (e.key === 'Enter') { e.preventDefault(); commitCardTitle(); }
+                        if (e.key === 'Escape') setEditingMapId(null);
+                      }}
+                      maxLength={50}
+                      autoComplete="off"
+                      spellCheck={false}
                     />
-                  </svg>
-                </button>
+                    <span className="dashboard__card-date">
+                      {formatDate(map.updatedAt)}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    className="dashboard__card-body"
+                    onClick={() => navigate(`/map/${map.id}`)}
+                  >
+                    <span className="dashboard__card-title">{map.title}</span>
+                    <span className="dashboard__card-date">
+                      {formatDate(map.updatedAt)}
+                    </span>
+                  </button>
+                )}
+                <div className="dashboard__card-actions">
+                  <button
+                    className="dashboard__card-action-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditingCard(map);
+                    }}
+                    aria-label={`${map.title} 이름 변경`}
+                    title="이름 변경"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    className="dashboard__card-action-btn dashboard__card-action-btn--danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteModal(map.id);
+                    }}
+                    aria-label={`${map.title} 삭제`}
+                    title="삭제"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
