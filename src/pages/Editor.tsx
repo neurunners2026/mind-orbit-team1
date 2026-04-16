@@ -153,11 +153,17 @@ function EditorInner() {
       // NaN 방어 — 좌표가 유효하지 않으면 센터링 생략
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
 
+      // 키보드가 이미 열려 있으면 편집→편집 전환 상태.
+      // 이때 300ms 애니메이션은 React Flow 리렌더를 유발하여
+      // 포커스가 불안정해지고 키보드 깜빡임을 일으킴 → duration: 0
+      const kbAlreadyOpen = keyboardHeightRef.current > 0;
+      const animDuration = kbAlreadyOpen ? 0 : 300;
+
       const doPosition = () => {
         const vv = window.visualViewport;
         const canvasEl = document.querySelector('.editor__canvas');
         if (!vv || !canvasEl) {
-          setCenter(cx, cy, { zoom: targetZoom, duration: 300 });
+          setCenter(cx, cy, { zoom: targetZoom, duration: animDuration });
           return;
         }
 
@@ -173,11 +179,11 @@ function EditorInner() {
 
         // NaN이면 setViewport 호출하지 않음
         if (!Number.isFinite(vpX) || !Number.isFinite(vpY)) return;
-        setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: 300 });
+        setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: animDuration });
       };
 
-      if (keyboardHeightRef.current > 0) {
-        // Case A: 키보드가 이미 열린 상태 → 즉시 배치
+      if (kbAlreadyOpen) {
+        // Case A: 키보드가 이미 열린 상태 → 즉시 배치 (애니메이션 없이)
         doPosition();
       } else {
         // Case C: 키보드가 새로 올라오는 중 →
@@ -860,9 +866,9 @@ function EditorInner() {
             onTouchStart={(e) => {
               e.preventDefault();
               touchFiredRef.current = true;
-              if (keyboardHeightRef.current === 0) {
-                focusProxyRef.current?.focus();
-              }
+              // 키보드 열림 여부와 무관하게 프록시 포커스 —
+              // 기존 input blur → 새 input focus 사이 공백에서 키보드가 내려가는 걸 방지
+              focusProxyRef.current?.focus();
               addSiblingNode();
             }}
             onMouseDown={(e) => e.preventDefault()}
@@ -894,9 +900,7 @@ function EditorInner() {
             onTouchStart={(e) => {
               e.preventDefault();
               touchFiredRef.current = true;
-              if (keyboardHeightRef.current === 0) {
-                focusProxyRef.current?.focus();
-              }
+              focusProxyRef.current?.focus();
               addChildNode();
             }}
             onMouseDown={(e) => e.preventDefault()}
