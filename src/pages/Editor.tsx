@@ -73,6 +73,8 @@ function EditorInner() {
   // FAB 탭 → (동기) 프록시 input focus → 키보드 열림 →
   // (비동기) 실제 노드 input이 마운트되면 포커스 이전 → 키보드 유지
   const focusProxyRef = useRef<HTMLInputElement>(null);
+  const siblingFabRef = useRef<HTMLButtonElement>(null);
+  const childFabRef = useRef<HTMLButtonElement>(null);
 
   // ==========================================
   // 모바일 키보드 높이 감지 + FAB 컨테이너를 visual viewport에 동기화
@@ -713,6 +715,39 @@ function EditorInner() {
   }, [handleKeyDown]);
 
   // ==========================================
+  // FAB touchstart 리스너 — { passive: false }로 등록
+  //
+  // React의 onTouchStart는 passive 리스너로 등록되어
+  // preventDefault() 호출 시 콘솔 에러가 발생함.
+  // ref + addEventListener로 직접 등록하여 해결.
+  // ==========================================
+  useEffect(() => {
+    const siblingBtn = siblingFabRef.current;
+    const childBtn = childFabRef.current;
+
+    const handleSiblingTouch = (e: TouchEvent) => {
+      e.preventDefault();
+      touchFiredRef.current = true;
+      focusProxyRef.current?.focus();
+      addSiblingNode();
+    };
+    const handleChildTouch = (e: TouchEvent) => {
+      e.preventDefault();
+      touchFiredRef.current = true;
+      focusProxyRef.current?.focus();
+      addChildNode();
+    };
+
+    siblingBtn?.addEventListener('touchstart', handleSiblingTouch, { passive: false });
+    childBtn?.addEventListener('touchstart', handleChildTouch, { passive: false });
+
+    return () => {
+      siblingBtn?.removeEventListener('touchstart', handleSiblingTouch);
+      childBtn?.removeEventListener('touchstart', handleChildTouch);
+    };
+  }, [addSiblingNode, addChildNode]);
+
+  // ==========================================
   // 렌더링
   // ==========================================
   if (loading) {
@@ -844,16 +879,9 @@ function EditorInner() {
              액션을 touchstart에서 직접 실행. click은 마우스 전용 fallback. */}
         <div className="editor__fab-group-right">
           <button
+            ref={siblingFabRef}
             className="editor__fab editor__fab--add"
             disabled={isEffectiveRoot}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              touchFiredRef.current = true;
-              // 키보드 열림 여부와 무관하게 프록시 포커스 —
-              // 기존 input blur → 새 input focus 사이 공백에서 키보드가 내려가는 걸 방지
-              focusProxyRef.current?.focus();
-              addSiblingNode();
-            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (touchFiredRef.current) { touchFiredRef.current = false; return; }
@@ -879,13 +907,8 @@ function EditorInner() {
             </svg>
           </button>
           <button
+            ref={childFabRef}
             className="editor__fab editor__fab--add"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              touchFiredRef.current = true;
-              focusProxyRef.current?.focus();
-              addChildNode();
-            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (touchFiredRef.current) { touchFiredRef.current = false; return; }
