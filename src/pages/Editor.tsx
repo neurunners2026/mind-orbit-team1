@@ -130,11 +130,11 @@ function EditorInner() {
   //
   // - Case A (키보드 이미 열림): 즉시 배치
   // - Case C (키보드 새로 열림): VV resize 안정화 후 배치
-  // PC에서는 사용자의 패닝/줌을 존중하기 위해 개입하지 않음.
+  // - 터치: 노드를 보이는 영역 상단 1/3에 배치 + 줌 보정
+  // - PC: 노드가 화면 밖이면 화면 안으로 최소한의 패닝만 수행
   // ==========================================
   useEffect(() => {
     const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-    if (!isTouchDevice) return;
 
     const handleEditStarted = (e: Event) => {
       const nodeId = (e as CustomEvent).detail as string;
@@ -142,9 +142,6 @@ function EditorInner() {
       if (!node) return;
 
       const currentZoom = getZoom();
-      const targetZoom =
-        currentZoom < 0.8 ? 1 : currentZoom > 2 ? 2 : currentZoom;
-
       const w = node.measured?.width ?? 100;
       const h = node.measured?.height ?? 40;
       const cx = (node.position?.x ?? 0) + w / 2;
@@ -153,9 +150,51 @@ function EditorInner() {
       // NaN 방어 — 좌표가 유효하지 않으면 센터링 생략
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
 
-      // 키보드가 이미 열려 있으면 편집→편집 전환 상태.
-      // 이때 300ms 애니메이션은 React Flow 리렌더를 유발하여
-      // 포커스가 불안정해지고 키보드 깜빡임을 일으킴 → duration: 0
+      // ── PC: 화면 밖 노드만 화면 안으로 최소 패닝 ──
+      if (!isTouchDevice) {
+        const canvasEl = document.querySelector('.editor__canvas');
+        if (!canvasEl) return;
+
+        const canvasRect = canvasEl.getBoundingClientRect();
+        const PADDING = 60;
+
+        // React Flow 내부 transform에서 현재 뷰포트 행렬 추출
+        const transformEl = canvasEl.querySelector('.react-flow__viewport');
+        if (!transformEl) return;
+        const matrix = new DOMMatrix(getComputedStyle(transformEl).transform);
+
+        // 노드 중심의 화면상 좌표
+        const screenX = cx * matrix.a + matrix.e + canvasRect.left;
+        const screenY = cy * matrix.d + matrix.f + canvasRect.top;
+
+        // 화면 안에 있으면 아무것도 하지 않음
+        if (
+          screenX >= canvasRect.left + PADDING &&
+          screenX <= canvasRect.right - PADDING &&
+          screenY >= canvasRect.top + PADDING &&
+          screenY <= canvasRect.bottom - PADDING
+        ) return;
+
+        // 화면 밖이면 최소한의 패닝으로 화면 안으로 이동
+        let dx = 0;
+        let dy = 0;
+        if (screenX < canvasRect.left + PADDING) dx = canvasRect.left + PADDING - screenX;
+        if (screenX > canvasRect.right - PADDING) dx = canvasRect.right - PADDING - screenX;
+        if (screenY < canvasRect.top + PADDING) dy = canvasRect.top + PADDING - screenY;
+        if (screenY > canvasRect.bottom - PADDING) dy = canvasRect.bottom - PADDING - screenY;
+
+        setViewport(
+          { x: matrix.e + dx, y: matrix.f + dy, zoom: currentZoom },
+          { duration: 200 },
+        );
+        return;
+      }
+
+      // ── 터치: 상단 1/3 배치 + 줌 보정 ──
+      // 너무 축소된 상태(0.5 미만)에서만 살짝 보정, 그 외에는 현재 줌 유지
+      const targetZoom =
+        currentZoom < 0.5 ? 0.6 : currentZoom > 2 ? 2 : currentZoom;
+
       const kbAlreadyOpen = keyboardHeightRef.current > 0;
       const animDuration = kbAlreadyOpen ? 0 : 300;
 
@@ -177,17 +216,13 @@ function EditorInner() {
         const vpX = targetLocalX - cx * targetZoom;
         const vpY = targetLocalY - cy * targetZoom;
 
-        // NaN이면 setViewport 호출하지 않음
         if (!Number.isFinite(vpX) || !Number.isFinite(vpY)) return;
         setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: animDuration });
       };
 
       if (kbAlreadyOpen) {
-        // Case A: 키보드가 이미 열린 상태 → 즉시 배치 (애니메이션 없이)
         doPosition();
       } else {
-        // Case C: 키보드가 새로 올라오는 중 →
-        // visualViewport resize가 멈출 때까지(≈150ms) 대기 후 배치
         const vv = window.visualViewport;
         if (!vv) {
           doPosition();
@@ -213,7 +248,6 @@ function EditorInner() {
 
         vv.addEventListener('resize', onVVResize);
 
-        // 안전장치: 600ms 내에 resize 이벤트가 없으면 그냥 배치
         fallbackTimer = setTimeout(() => {
           cleanup();
           doPosition();
