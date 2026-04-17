@@ -5,6 +5,7 @@ export interface Mindmap {
   createdAt: string;
   updatedAt: string;
   edgeStyle?: EdgeStyleId;
+  isFavorite?: boolean;
 }
 
 /** 마인드맵 노드 (DB nodes 테이블) */
