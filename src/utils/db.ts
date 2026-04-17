@@ -158,6 +158,53 @@ export async function updateMindmapSettings(
   broadcast('mindmap:meta:changed', { mapId });
 }
 
+/** 모든 맵의 노드 수를 일괄 조회 */
+export async function getAllNodeCounts(): Promise<Record<string, number>> {
+  const nodes: MindmapNodeData[] = await db.table('nodes').toArray();
+  const counts: Record<string, number> = {};
+  for (const node of nodes) {
+    if (node.mapId) {
+      counts[node.mapId] = (counts[node.mapId] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
+/** 마인드맵 복제 (노드 포함) */
+export async function duplicateMindmap(mapId: string): Promise<string> {
+  const original = await getMindmap(mapId);
+  if (!original) throw new Error('Mindmap not found');
+  const nodes = await getNodesByMapId(mapId);
+
+  const now = new Date().toISOString();
+  const newMapId = generateId();
+
+  // 구 node ID → 신 node ID 매핑
+  const idMap = new Map<string, string>();
+  for (const node of nodes) idMap.set(node.id, generateId());
+
+  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
+    await db.table('mindmaps').add({
+      id: newMapId,
+      title: `${original.title} 복사본`,
+      createdAt: now,
+      updatedAt: now,
+      edgeStyle: original.edgeStyle,
+      isFavorite: false,
+    });
+    const newNodes = nodes.map((n) => ({
+      ...n,
+      id: idMap.get(n.id)!,
+      mapId: newMapId,
+      parentId: n.parentId ? (idMap.get(n.parentId) ?? null) : null,
+    }));
+    if (newNodes.length) await db.table('nodes').bulkAdd(newNodes);
+  });
+
+  broadcast('mindmap:list:changed', { mapId: newMapId });
+  return newMapId;
+}
+
 /** 즐겨찾기 토글 */
 export async function toggleFavorite(mapId: string, isFavorite: boolean): Promise<void> {
   await db.table('mindmaps').update(mapId, { isFavorite });
