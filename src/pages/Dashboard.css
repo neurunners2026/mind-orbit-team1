@@ -139,28 +139,66 @@
   gap: var(--spacing-sm);
 }
 
-/* 정렬 버튼 */
-.dashboard__sort-btns {
+/* 정렬 드롭다운 */
+.dashboard__sort-wrap {
+  position: relative;
+}
+.dashboard__sort-toggle {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-}
-.dashboard__sort-btn {
-  padding: 4px 10px;
-  border-radius: calc(var(--radius-sm) - 2px);
-  font-size: var(--font-size-xs);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   transition: all var(--transition-fast);
   white-space: nowrap;
 }
-.dashboard__sort-btn:hover { color: var(--color-text-primary); }
-.dashboard__sort-btn--active {
-  background: var(--color-surface-active);
+.dashboard__sort-toggle:hover {
+  border-color: var(--color-border-light);
   color: var(--color-text-primary);
+}
+.dashboard__sort-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 130px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 300;
+  animation: dropIn 0.12s ease;
+}
+.dashboard__sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 10px var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  gap: var(--spacing-sm);
+}
+.dashboard__sort-option:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+.dashboard__sort-option--active {
+  color: var(--color-text-primary);
+}
+.dashboard__sort-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
 }
 
 /* 보기 모드 토글 */
@@ -205,10 +243,11 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  /* overflow: hidden 제거 → 3점 드롭다운이 카드 밖으로 나올 수 있도록 */
   transition: all var(--transition-fast);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 .dashboard__card-item:hover {
   border-color: var(--color-border-light);
@@ -226,6 +265,8 @@
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
+  /* 카드 위쪽 모서리만 둥글게 (카드에 overflow:hidden 없으므로 직접 지정) */
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 .dashboard__thumb-svg {
   width: 80%;

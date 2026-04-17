@@ -66,6 +66,13 @@ const ListSVG = () => (
   </svg>
 );
 
+const SortToggleSVG = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <path d="M7 3v18M7 3L4 6M7 3l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17 21V3M17 21l-3-3M17 21l3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const NodeSVG = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8" />
@@ -123,6 +130,15 @@ function Dashboard() {
 
   // 3점 메뉴
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // 정렬 드롭다운
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  const sortLabels: Record<SortBy, string> = {
+    latest: '최신순',
+    name: '이름순',
+    favorites: '즐겨찾기순',
+  };
 
   // 모달
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -480,7 +496,7 @@ function Dashboard() {
 
   // ── 렌더 ──────────────────────────────────────────────────
   return (
-    <div className="dashboard" onClick={() => setActiveMenuId(null)}>
+    <div className="dashboard" onClick={() => { setActiveMenuId(null); setShowSortMenu(false); }}>
       <Header
         title="Mind Orbit"
         rightAction={
@@ -523,21 +539,29 @@ function Dashboard() {
           </div>
 
           <div className="dashboard__toolbar-right">
-            {/* 정렬 */}
-            <div className="dashboard__sort-btns">
-              {([
-                ['latest', '최신순'],
-                ['name', '이름순'],
-                ['favorites', '즐겨찾기'],
-              ] as [SortBy, string][]).map(([key, label]) => (
-                <button
-                  key={key}
-                  className={`dashboard__sort-btn${sortBy === key ? ' dashboard__sort-btn--active' : ''}`}
-                  onClick={() => setSortBy(key)}
-                >
-                  {label}
-                </button>
-              ))}
+            {/* 정렬 토글 드롭다운 */}
+            <div className="dashboard__sort-wrap" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="dashboard__sort-toggle"
+                onClick={() => setShowSortMenu((v) => !v)}
+              >
+                <SortToggleSVG />
+                {sortLabels[sortBy]}
+              </button>
+              {showSortMenu && (
+                <div className="dashboard__sort-dropdown">
+                  {(['latest', 'name', 'favorites'] as SortBy[]).map((key) => (
+                    <button
+                      key={key}
+                      className={`dashboard__sort-option${sortBy === key ? ' dashboard__sort-option--active' : ''}`}
+                      onClick={() => { setSortBy(key); setShowSortMenu(false); }}
+                    >
+                      {sortLabels[key]}
+                      {sortBy === key && <span className="dashboard__sort-dot" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 보기 모드 */}
