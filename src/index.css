@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, sans-serif;
+  --color-orbit-bg: #0f0f14;
+  --color-orbit-surface: #1a1a24;
+  --color-orbit-surface-hover: #22222e;
+  --color-orbit-border: #2e2e3a;
+  --color-orbit-muted: #9898a8;
+  --color-orbit-accent: #6c5ce7;
+  --color-orbit-accent-hover: #7c6cf7;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-orbit-bg text-zinc-100 antialiased;
+  font-family: var(--font-sans);
+}
+
+#root {
+  min-height: 100dvh;
+}
