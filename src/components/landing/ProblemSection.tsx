@@ -27,7 +27,7 @@ export function ProblemSection() {
         {pains.map((card) => (
           <article
             key={card.title}
-            className="rounded-2xl border border-orbit-border bg-orbit-surface/80 p-6 shadow-md shadow-black/25 transition-transform duration-200 hover:-translate-y-0.5"
+            className="rounded-2xl border border-orbit-border bg-orbit-surface/80 p-6 shadow-md shadow-black/25 transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:shadow-black/40 hover:border-white/[0.12]"
           >
             <h3 className="text-lg font-semibold text-zinc-50">{card.title}</h3>
             <p className="mt-3 text-sm leading-relaxed text-zinc-400">

@@ -49,7 +49,7 @@ export function TargetSection() {
         {audiences.map((item) => (
           <div
             key={item.title}
-            className="flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7"
+            className="flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:shadow-black/40 hover:border-white/[0.12]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/80 text-white">
               {item.icon}
