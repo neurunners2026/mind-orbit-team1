@@ -27,7 +27,7 @@ export default function Login() {
 
   return (
     <div className="min-h-dvh bg-orbit-bg">
-      <Navbar showSectionNav={false} />
+      <Navbar showSectionNav={false} showClose />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-lg flex-col justify-center px-4 py-16 sm:px-6">
         {signupComplete ? (
           <p

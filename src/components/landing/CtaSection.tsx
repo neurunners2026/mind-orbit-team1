@@ -1,6 +1,10 @@
 import { CTAButton } from './CTAButton'
 
-export function CtaSection() {
+type CtaSectionProps = {
+  onLoginClick: () => void
+}
+
+export function CtaSection({ onLoginClick }: CtaSectionProps) {
   return (
     <section
       id="cta"
@@ -20,17 +24,10 @@ export function CtaSection() {
               Mind Orbit
             </p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              지금 바로 궤도에 올라타 보세요
+              생각이 흩어지기 전에 Mind Orbit을 경험해보세요
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-zinc-300 sm:text-lg">
-              로그인 후 에디터 예시 화면으로 이동합니다. 실제 데이터는 저장되지
-              않는 UI 시연이에요.
-            </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <CTAButton to="/login">시작하기 (로그인)</CTAButton>
-              <CTAButton href="#hero" variant="ghost" className="text-zinc-200">
-                맨 위로
-              </CTAButton>
+              <CTAButton onClick={onLoginClick}>지금 바로 사용해보기</CTAButton>
             </div>
           </div>
         </div>

@@ -1,6 +1,10 @@
 import { CTAButton } from './CTAButton'
 
-export function HeroSection() {
+type HeroSectionProps = {
+  onLoginClick: () => void
+}
+
+export function HeroSection({ onLoginClick }: HeroSectionProps) {
   return (
     <section
       id="hero"
@@ -17,48 +21,37 @@ export function HeroSection() {
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300/90">
-            생각의 궤도를 정리하는 도구
-          </p>
-          <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl md:leading-[1.08]">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl md:leading-[1.08]">
             복잡한 아이디어를
             <span className="block bg-gradient-to-r from-violet-300 via-white to-indigo-200 bg-clip-text text-transparent">
               한눈에 연결하세요
             </span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-            Mind Orbit은 흩어진 메모와 회의록을 구조화된 맵으로 바꿔, 팀이 같은
-            그림을 보며 빠르게 합의할 수 있도록 돕습니다.
-          </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <CTAButton to="/login">시작하기 (로그인)</CTAButton>
-            <CTAButton href="#features" variant="secondary">
-              기능 살펴보기
-            </CTAButton>
+            <CTAButton onClick={onLoginClick}>지금 바로 사용해보기</CTAButton>
           </div>
-          <p className="mt-6 text-xs text-zinc-500">
-            프런트엔드 UI 데모 · 실제 인증 서버는 포함되지 않습니다.
-          </p>
         </div>
 
-        <div className="mx-auto mt-16 grid max-w-4xl gap-4 sm:grid-cols-3">
-          {[
-            { label: '실시간 협업', value: '팀 보드' },
-            { label: '구조화', value: '트리·그래프' },
-            { label: '보내기', value: '공유 링크' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-white/[0.08] bg-orbit-surface/60 p-5 text-center shadow-lg shadow-black/20 backdrop-blur-sm"
-            >
-              <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">
-                {item.label}
-              </p>
-              <p className="mt-2 text-lg font-semibold text-zinc-100">
-                {item.value}
-              </p>
-            </div>
-          ))}
+        <div className="mx-auto mt-16 max-w-lg">
+          <p className="mb-5 text-center text-sm font-medium text-zinc-500">
+            혹시 이런 적 있나요?
+          </p>
+          <ul className="space-y-3">
+            {[
+              '메모는 했는데 어디 있는지 모르겠다',
+              '정리하려다 오히려 멈춘 적 있다',
+              '아이디어는 많은데 연결이 안 된다',
+              '쓰려고 보면 머릿속이 다시 복잡해진다',
+            ].map((text) => (
+              <li
+                key={text}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-orbit-surface/50 px-5 py-4 text-sm text-zinc-300 backdrop-blur-sm"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

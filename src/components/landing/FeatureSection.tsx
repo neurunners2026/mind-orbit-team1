@@ -2,20 +2,20 @@ import { LandingSection } from './LandingSection'
 
 const features = [
   {
-    name: '오비트 캔버스',
-    desc: '노드를 자유롭게 배치하고, 관계를 곡선으로 연결해 흐름을 시각화합니다.',
+    name: '생각나는 대로 놓기만 해도 정리가 됩니다',
+    desc: '노드를 자유롭게 배치하면 흩어진 생각이 자연스럽게 연결됩니다.',
   },
   {
-    name: '계층과 맥락',
+    name: '큰 생각부터 작은 디테일까지 한 번에 이어집니다',
     desc: '큰 그림에서 세부까지 확장·축소하며, 각 가지에 메모와 링크를 붙입니다.',
   },
   {
-    name: '팀 스냅샷',
-    desc: '특정 시점의 보드를 저장해, 회고와 온보딩에 그대로 활용할 수 있습니다.',
+    name: '정리한 흐름을 그대로 저장해 둘 수 있습니다',
+    desc: '특정 시점의 보드를 저장해, 언제든 다시 꺼내 이어갈 수 있습니다.',
   },
   {
-    name: '가벼운 공유',
-    desc: '읽기 전용 링크로 이해관계자에게 맥락만 전달하고 피드백을 모읍니다.',
+    name: '링크 하나로 생각을 쉽게 공유할 수 있습니다',
+    desc: '읽기 전용 링크로 내 생각의 흐름을 그대로 다른 사람에게 전달합니다.',
   },
 ]
 
@@ -24,8 +24,8 @@ export function FeatureSection() {
     <LandingSection
       id="features"
       eyebrow="Features"
-      title="맵을 중심으로 워크플로를 다시 설계했습니다"
-      description="복잡함을 숨기지 않되, 한 화면에서 방향을 잃지 않도록 배치와 대비를 정리했습니다."
+      title="생각이 길을 잃지 않도록 만들었습니다"
+      description="복잡한 생각도 한 화면에서 자연스럽게 정리됩니다"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         {features.map((f, i) => (

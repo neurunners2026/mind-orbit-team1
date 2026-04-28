@@ -1,15 +1,20 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CTAButton } from './CTAButton'
 
 type NavbarProps = {
   /** When false, hides in-page anchor links (e.g. on auth pages). */
   showSectionNav?: boolean
+  /** When true, shows an X button that navigates back to /. */
+  showClose?: boolean
+  /** Called when the 로그인 button is clicked (landing page only). */
+  onLoginClick?: () => void
 }
 
 const navItemClass =
   'rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100'
 
-export function Navbar({ showSectionNav = true }: NavbarProps) {
+export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
+  const navigate = useNavigate()
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-orbit-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -18,10 +23,15 @@ export function Navbar({ showSectionNav = true }: NavbarProps) {
           className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100"
         >
           <span
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-orbit-accent to-indigo-400 text-xs font-bold text-white shadow-md shadow-orbit-accent/30"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 shadow-md shadow-violet-600/40"
             aria-hidden
           >
-            MO
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="2" fill="white" stroke="none" />
+              <ellipse cx="12" cy="12" rx="10" ry="4" />
+              <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
+              <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)" />
+            </svg>
           </span>
           Mind Orbit
         </Link>
@@ -54,9 +64,26 @@ export function Navbar({ showSectionNav = true }: NavbarProps) {
         )}
 
         <div className="flex items-center gap-2">
-          <CTAButton to="/login" variant="secondary" className="px-4 py-2 text-xs sm:text-sm">
-            로그인
-          </CTAButton>
+          {showClose ? (
+            <button
+              onClick={() => navigate('/')}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
+              aria-label="랜딩페이지로 돌아가기"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          ) : (
+            <CTAButton
+              variant="secondary"
+              className="px-4 py-2 text-xs sm:text-sm"
+              onClick={onLoginClick}
+            >
+              로그인
+            </CTAButton>
+          )}
         </div>
       </div>
     </header>
