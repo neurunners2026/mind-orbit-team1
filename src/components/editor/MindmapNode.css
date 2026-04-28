@@ -10,13 +10,20 @@
   padding: 8px 16px;
   min-width: 80px;
   max-width: 280px;
-  cursor: grab;
+  /* 노드는 클릭/상호작용 영역으로 인식되도록 pointer.
+     배경(react-flow__pane)은 grab 그대로 두어 pan과 시각적으로 구분됨. */
+  cursor: pointer;
   transition: border-color var(--transition-fast),
               box-shadow var(--transition-fast),
               transform var(--transition-fast);
   user-select: none;
   display: inline-flex;
   align-items: center;
+}
+
+/* 드래그 중에는 grabbing으로 시각 피드백 */
+.mindmap-node:active {
+  cursor: grabbing;
 }
 
 .mindmap-node:hover {
@@ -300,4 +307,26 @@
 
 .mindmap-node--side-left .mindmap-node__collapse-btn:hover {
   transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* ============================================
+   드래그: 원본(잠금) + 클론(고스트)
+   - 원본은 자리 지키며 반투명 (cut/paste 미리보기 메타포)
+   - 클론은 커서를 따라가며 강조 + 클릭 통과
+   ============================================ */
+.mindmap-node--drag-source {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+  /* 드래그 중에는 hover/transition으로 색이 덮이지 않도록 */
+  transition: none;
+}
+
+.mindmap-node--drag-ghost {
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--color-accent-light),
+              0 8px 20px rgba(0, 0, 0, 0.4);
+  /* 미세한 회전으로 "들어올린" 느낌 */
+  transform: rotate(-1deg);
+  transition: none;
+  z-index: 1000;
 }

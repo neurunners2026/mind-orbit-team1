@@ -29,7 +29,7 @@ import {
 } from '../utils/db';
 import { layoutTree, deriveEdges, calcNewNodePosition } from '../utils/layout';
 import { getHiddenIds, computeNodeStats, buildChildrenMap } from '../utils/tree';
-import { buildSideMap } from '../utils/side';
+import { buildSideMap, isLeftOfRoot } from '../utils/side';
 import {
   HistoryStack,
   snapshotPersisted,
@@ -79,6 +79,10 @@ function EditorInner() {
     startX: number;
     startSide: 'left' | 'right' | null; // root-direct-child일 때만 의미
   } | null>(null);
+  // 현재 드래그 중인 원본 노드 id — 본 ref가 set되어 있으면
+  // (1) handleNodesChange가 해당 id의 position change를 필터링해 본체를 잠그고,
+  // (2) rfNodes에 ghost 노드(`__ghost__-<id>`)가 떠있는 상태.
+  const dragGhostIdRef = useRef<string | null>(null);
   // keyboardHeight는 렌더에 사용하지 않으므로 ref만으로 관리 (불필요한 리렌더 방지)
   const keyboardHeightRef = useRef(0);
   // iOS Safari: touchstart에서 preventDefault()하면 click이 발생하지 않을 수 있음.
@@ -591,8 +595,18 @@ function EditorInner() {
         : {};
 
       // 좌측 노드의 width 변화에 따라 x를 보정 — 합성 position change로 augment
+      // Lock & Ghost: 드래그 중인 원본 id의 position change는 제거해서 본체를 자리에 붙박음
       const augmented: NodeChange<RFNode>[] = [];
+      const dragSourceId = dragGhostIdRef.current;
       for (const c of changes) {
+        if (
+          dragSourceId &&
+          c.type === 'position' &&
+          'id' in c &&
+          c.id === dragSourceId
+        ) {
+          continue; // 원본 잠금
+        }
         augmented.push(c);
         if (
           c.type === 'dimensions' &&
@@ -700,10 +714,13 @@ function EditorInner() {
   );
 
   // ==========================================
-  // 노드 드래그 시작 — 시작 시점 스냅샷/위치/side 캐시 (Undo + collapsed-move 용)
+  // 노드 드래그 시작
+  // - undo 용 스냅샷 + collapsed-move용 시작 위치/side 캐시
+  // - "Lock & Ghost": 원본을 잠그기 위해 dragGhostIdRef 설정 + rfNodes에 클론(ghost) 주입
+  //   원본은 data.isDragSource: true로 마킹해 반투명 처리
   // ==========================================
   const onNodeDragStart = useCallback(
-    (_e: unknown, node: { id: string }) => {
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
       const orig = allNodesRef.current.find((n) => n.id === node.id);
       if (!orig) return;
       const rootId = allNodesRef.current.find((n) => !n.parentId)?.id;
@@ -712,7 +729,7 @@ function EditorInner() {
         : undefined;
       const isRootDirectChild = !!(root && orig.parentId === root.id);
       const startSide: 'left' | 'right' | null = isRootDirectChild
-        ? orig.position.x < root!.position.x
+        ? isLeftOfRoot(orig, root!)
           ? 'left'
           : 'right'
         : null;
@@ -722,33 +739,109 @@ function EditorInner() {
         startX: orig.position.x,
         startSide,
       };
+
+      // Lock & Ghost: source + 모든 자손을 isDragSource로 마킹(서브트리 시각 피드백)
+      // + 클론(ghost) 노드 주입(커서 따라가는 미리보기는 source 단독으로 표시)
+      const sourceId = node.id;
+      const ghostId = `__ghost__-${sourceId}`;
+      dragGhostIdRef.current = sourceId;
+
+      const childrenMap = buildChildrenMap(allNodesRef.current);
+      const subtreeIds = new Set<string>([sourceId]);
+      {
+        const stack = [...(childrenMap[sourceId] || [])];
+        while (stack.length) {
+          const cur = stack.pop()!;
+          subtreeIds.add(cur.id);
+          stack.push(...(childrenMap[cur.id] || []));
+        }
+      }
+
+      setRfNodes((nds) => {
+        const sourceNode = nds.find((n) => n.id === sourceId);
+        if (!sourceNode) return nds;
+        const ghostNode: RFNode = {
+          ...sourceNode,
+          id: ghostId,
+          position: { ...sourceNode.position },
+          draggable: false,
+          selectable: false,
+          focusable: false,
+          data: { ...sourceNode.data, isGhost: true, isDragSource: false },
+        };
+        return [
+          ...nds.map((n) =>
+            subtreeIds.has(n.id)
+              ? { ...n, data: { ...n.data, isDragSource: true } }
+              : n,
+          ),
+          ghostNode,
+        ];
+      });
     },
-    [],
+    [setRfNodes],
   );
 
   // ==========================================
-  // 노드 드래그 종료 — collapsed면 자손 따라오기 + side 바뀌면 좌우 대칭 + history push
+  // 노드 드래그 중 — 클론(ghost)의 position을 cursor 위치로 추적
+  // 원본은 handleNodesChange에서 position change가 필터링되어 그대로 잠김
+  // ==========================================
+  const onNodeDrag = useCallback(
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
+      if (!dragGhostIdRef.current || dragGhostIdRef.current !== node.id) return;
+      const ghostId = `__ghost__-${node.id}`;
+      setRfNodes((nds) =>
+        nds.map((n) =>
+          n.id === ghostId
+            ? { ...n, position: { x: node.position.x, y: node.position.y } }
+            : n,
+        ),
+      );
+    },
+    [setRfNodes],
+  );
+
+  // ==========================================
+  // 노드 드래그 종료
+  // - Lock & Ghost: 드래그 중 본체 position이 갱신되지 않았으므로
+  //   여기서 callback의 node.position(누적 드롭 위치)으로 동기화
+  // - collapsed면 자손 따라오기, root-direct-child + side 바뀜이면 자손 좌우 대칭
+  // - history push, ghost 제거
   // ==========================================
   const onNodeDragStop = useCallback(
-    (_e: unknown, node: { id: string }) => {
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
+      const cleanupGhost = () => {
+        dragGhostIdRef.current = null;
+        // refreshVisibility가 allNodesRef로부터 rfNodes를 다시 빌드하므로
+        // ghost는 자동으로 제거되고 isDragSource 마킹도 해제됨
+      };
+
       const ctx = dragStartRef.current;
       if (!ctx || ctx.nodeId !== node.id) {
+        cleanupGhost();
         dragStartRef.current = null;
+        refreshVisibility();
         return;
       }
       const dragged = allNodesRef.current.find((n) => n.id === node.id);
       if (!dragged) {
+        cleanupGhost();
         dragStartRef.current = null;
+        refreshVisibility();
         return;
       }
+
+      // Lock으로 인해 갱신되지 않았던 본체 position을 드롭 위치로 commit
+      dragged.position = { x: node.position.x, y: node.position.y };
 
       const dx = dragged.position.x - ctx.startX;
       const startY = ctx.before.find((b) => b.id === node.id)?.position.y;
       const dy =
         startY !== undefined ? dragged.position.y - startY : 0;
 
-      // collapsed 노드면 모든 자손에 동일 delta 적용
-      if (dragged.collapsed) {
+      // 드래그 = 서브트리 이동: 항상 모든 자손에 동일 delta 적용
+      // (clone+delay 방식이라 collapsed 여부와 무관하게 통째로 옮기는 게 자연스러움)
+      {
         const childrenMap = buildChildrenMap(allNodesRef.current);
         const stack = [...(childrenMap[dragged.id] || [])];
         while (stack.length) {
@@ -761,16 +854,16 @@ function EditorInner() {
         }
       }
 
-      // root-direct-child + collapsed + side 바뀜 → 자손 좌우 대칭 변환
-      // (펼친 상태에서는 드래그된 노드 1개만 움직이는 정책. 자손은 절대 건드리지 않음)
-      if (dragged.collapsed && ctx.startSide) {
+      // root-direct-child가 좌↔우 가로지른 경우 → 자손 좌우 대칭 변환
+      if (ctx.startSide) {
         const rootId = allNodesRef.current.find((n) => !n.parentId)?.id;
         const root = rootId
           ? allNodesRef.current.find((n) => n.id === rootId)
           : undefined;
         if (root) {
-          const endSide: 'left' | 'right' =
-            dragged.position.x < root.position.x ? 'left' : 'right';
+          const endSide: 'left' | 'right' = isLeftOfRoot(dragged, root)
+            ? 'left'
+            : 'right';
           if (endSide !== ctx.startSide) {
             const draggedWidth =
               dragged.measuredWidth ||
@@ -801,6 +894,7 @@ function EditorInner() {
       );
 
       dragStartRef.current = null;
+      cleanupGhost();
       refreshVisibility();
       triggerAutoSave();
     },
@@ -1110,6 +1204,7 @@ function EditorInner() {
           onNodesChange={handleNodesChange}
           onSelectionChange={onSelectionChange}
           onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodesConnectable={false}
           onMoveEnd={onMoveEnd}
