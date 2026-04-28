@@ -13,7 +13,7 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState | null
-  const from = state?.from?.pathname ?? '/editor'
+  const from = state?.from?.pathname ?? '/dashboard'
   const signupComplete = state?.signupComplete === true
 
   if (isAuthenticated) {

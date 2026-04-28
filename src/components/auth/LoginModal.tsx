@@ -12,7 +12,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
 
   const handleAuthenticated = () => {
     login()
-    navigate('/editor')
+    navigate('/dashboard')
   }
 
   return (

@@ -1,0 +1,259 @@
+/* ============================================
+   MindmapNode - 커스텀 노드 스타일
+   ============================================ */
+
+.mindmap-node {
+  position: relative;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  min-width: 80px;
+  max-width: 280px;
+  cursor: grab;
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              transform var(--transition-fast);
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mindmap-node:hover {
+  border-color: var(--color-border-light);
+}
+
+/* 선택 상태: hover와 동일 계열이지만 우선 적용 (border + glow) */
+.mindmap-node--selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+/* 선택 + hover: border-color를 다시 명시해야 함
+   (.mindmap-node:hover가 클래스+pseudo-class로 specificity 0,1,1 이라
+    클래스만 쓰는 .mindmap-node--selected(0,1,0)를 이긴다 → accent 테두리가 연해짐) */
+.mindmap-node--selected:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light),
+              0 0 0 5px rgba(108, 92, 231, 0.25);
+}
+
+/* 접힌 상태: 테두리는 유지하고 접힘 인디케이터는 버튼의 카운트로 표현 */
+
+/* 루트 노드 */
+.mindmap-node--root {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  padding: 10px 20px;
+}
+
+.mindmap-node--root .mindmap-node__label {
+  color: white;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+}
+
+.mindmap-node--root.mindmap-node--selected {
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.4);
+}
+
+/* 라벨 래퍼 — input과 라벨을 같은 grid 셀에 겹쳐 자연스러운 텍스트 베이스라인 유지 */
+.mindmap-node__label-wrap {
+  display: inline-grid;
+  min-width: 20px;
+  min-height: 1.4em; /* 빈 라벨이어도 line-height만큼 높이 유지 */
+}
+
+/* 라벨과 input을 같은 grid cell에 겹쳐 배치 → 둘 다 인라인 흐름으로 렌더되어 수직 정렬 일치 */
+.mindmap-node__label,
+.mindmap-node__input {
+  grid-area: 1 / 1;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  word-break: break-word;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 터치 디바이스에서는 16px 이상으로 승격.
+   iOS Safari가 16px 미만 input에 포커스할 때 자동 줌인하는 동작 방지
+   (레이아웃 뷰포트가 어긋나 횡스크롤이 생기는 근본 원인) */
+@media (pointer: coarse) {
+  .mindmap-node__label,
+  .mindmap-node__input {
+    font-size: 1rem;
+  }
+}
+
+.mindmap-node__input {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  cursor: text;
+  width: 100%;
+  /* grid 컬럼 auto-sizing에 input의 기본 intrinsic min-width가 영향을 주지 않도록 */
+  min-width: 0;
+}
+
+/* 편집 중일 때 원본 라벨은 보이지 않지만 공간은 차지 (너비 유지용) */
+.mindmap-node--editing .mindmap-node__label {
+  visibility: hidden;
+}
+
+/* 편집 모드:
+   - 드래그 비활성 + 텍스트 선택 활성
+   - 선택 상태(내부 soft glow)와 구분되도록 바깥쪽에 accent 링을 한 겹 더 얹음
+   - 과하지 않게 두 단계 shadow로 "입력 중" 상태 명시 */
+.mindmap-node--editing {
+  cursor: text;
+  user-select: text;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light),
+              0 0 0 5px var(--color-accent);
+}
+
+/* 편집 모드 input: 노드 내부 전체(padding 영역 포함)로 확장
+   - input 자체가 padding을 가져 예전의 dead zone(노드 padding)이 네이티브 input 영역이 됨
+   - 캐럿 이동/드래그 선택이 모두 네이티브 동작으로 작동 (우리 커스텀 로직은 fallback 역할)
+   - 사이징은 visibility: hidden 라벨이 여전히 grid cell을 결정하므로 노드 크기는 그대로 */
+.mindmap-node--editing .mindmap-node__input {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  padding: 8px 16px;
+}
+
+.mindmap-node--root.mindmap-node--editing .mindmap-node__input {
+  padding: 10px 20px;
+}
+
+/* 루트 편집 모드: 루트의 선택 글로우(40%)에 바깥 accent 링 추가 */
+.mindmap-node--root.mindmap-node--editing {
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.4),
+              0 0 0 5px var(--color-accent);
+}
+
+/* 편집 모드 + hover: 편집 상태를 그대로 유지
+   (편집 + 선택 동시 상태에서 .mindmap-node--selected:hover(0,2,0)가 shadow를 덮는 걸 막기 위해 명시) */
+.mindmap-node--editing:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light),
+              0 0 0 5px var(--color-accent);
+}
+
+.mindmap-node--root.mindmap-node--editing:hover {
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.4),
+              0 0 0 5px var(--color-accent);
+}
+
+/* 편집 모드: 접기 버튼을 노드 뒤로 숨겨 입력 UX 방해 제거
+   (완전 제거가 아니라 z-index만 뒤로 보내 편집 종료 시 자연스럽게 복귀) */
+.mindmap-node--editing .mindmap-node__collapse-btn {
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 접기 버튼 가시성 정책
+   - chevron 변형(펼쳐진 상태): 단순 액션 버튼 → 평소엔 숨기고 노드 hover / focus 시 노출
+   - count 변형(접힌 상태): 자손 수 정보 + 펼치기 CTA → 항상 노출
+*/
+.mindmap-node__collapse-btn--chevron {
+  opacity: 0;
+  pointer-events: none; /* 투명 상태에서 실수로 잡히지 않게 */
+}
+
+.mindmap-node:hover .mindmap-node__collapse-btn--chevron,
+.mindmap-node__collapse-btn--chevron:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 편집 모드에서는 위의 hover 노출도 적용되지 않도록 강제 (편집 중엔 노드 hover여도 계속 숨김) */
+.mindmap-node--editing .mindmap-node__collapse-btn--chevron,
+.mindmap-node--editing:hover .mindmap-node__collapse-btn--chevron {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mindmap-node--root .mindmap-node__input {
+  color: white;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  line-height: 1.4;
+}
+
+/* 핸들 (연결점) */
+.mindmap-node__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: var(--color-border) !important;
+  border: 2px solid var(--color-surface) !important;
+  transition: all var(--transition-fast);
+}
+
+/* 핸들 숨김: 마인드맵은 위계 구조이므로 자유 연결 불가 */
+.mindmap-node__handle--hidden {
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  pointer-events: none !important;
+  /* 엣지 라우팅 기준점으로는 여전히 사용됨 */
+}
+
+/* 접기/펼치기 버튼 — 노드 경계에 걸치도록 배치 */
+.mindmap-node__collapse-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 10px;
+  font-weight: 600;
+  z-index: 10;
+  padding: 0;
+}
+
+.mindmap-node__collapse-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  transform: translate(50%, -50%) scale(1.15);
+}
+
+.mindmap-node__collapse-count {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* 루트 노드의 접기 버튼 */
+.mindmap-node--root .mindmap-node__collapse-btn {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--color-accent);
+  color: white;
+}
+
+.mindmap-node--root .mindmap-node__collapse-btn:hover {
+  background: var(--color-accent-hover);
+  border-color: white;
+}
+
+.mindmap-node--root .mindmap-node__collapse-count {
+  color: white;
+}

@@ -4,6 +4,7 @@ import { PrivateRoute } from './routes/PrivateRoute'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Dashboard from './pages/Dashboard'
 import Editor from './pages/Editor'
 
 export default function App() {
@@ -14,7 +15,15 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route
-          path="/editor"
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/map/:mapId"
           element={
             <PrivateRoute>
               <Editor />

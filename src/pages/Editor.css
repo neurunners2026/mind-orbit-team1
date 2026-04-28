@@ -1,0 +1,312 @@
+/* ============================================
+   Editor 화면
+   PRD: Root 노드 중심의 무한 캔버스 조작 및 생각 확장
+   ============================================ */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh; /* 모바일 주소바 대응 */
+  overflow: hidden;
+}
+
+.editor__canvas {
+  flex: 1;
+  position: relative;
+}
+
+/* 로딩 */
+.editor__loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* 헤더 내부 요소 */
+.editor__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.editor__auto-save-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-success);
+  background: rgba(46, 204, 113, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* 헤더 전체보기 버튼 */
+.editor__fitview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.editor__fitview-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.editor__fitview-btn:active {
+  transform: scale(0.92);
+}
+
+/* React Flow 캔버스 스타일 오버라이드 */
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+/* ============================================
+   플로팅 FAB (Floating Action Buttons)
+
+   [전략] iOS Safari에서 position:fixed의 키보드 처리가 불안정하므로,
+   컨테이너를 position:fixed; top:0 으로 잡고,
+   JS(visualViewport API)로 transform/height를 VV에 동기화.
+   → 컨테이너 = visual viewport와 동일
+   → 내부 FAB은 position:absolute; bottom:X 로 키보드 위에 안정 배치.
+   ============================================ */
+.editor__fabs {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%; /* JS에서 vv.height로 덮어씀 */
+  pointer-events: none;
+  z-index: 50;
+  /* JS가 transform: translateY(vv.offsetTop)로 VV에 맞춤 */
+}
+
+.editor__fab {
+  pointer-events: auto;
+  position: absolute; /* 컨테이너(= visual viewport) 기준 */
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast),
+              color var(--transition-fast),
+              box-shadow var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editor__fab:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-lg, 0 4px 12px rgba(0,0,0,0.3));
+}
+
+.editor__fab:active {
+  opacity: 0.8;
+}
+
+.editor__fab:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* 삭제 FAB — 좌측 하단 (컨테이너 = visual viewport 기준) */
+.editor__fab--delete {
+  left: var(--spacing-md);
+  bottom: var(--spacing-md);
+}
+
+.editor__fab--delete:hover:not(:disabled) {
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+}
+
+/* 우측 하단 FAB 그룹 (형제 추가 + 자식 추가) */
+.editor__fab-group-right {
+  pointer-events: none;
+  position: absolute; /* 컨테이너 기준 */
+  right: var(--spacing-md);
+  bottom: var(--spacing-md);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--spacing-sm);
+}
+
+.editor__fab-group-right .editor__fab {
+  pointer-events: auto;
+  position: static;
+}
+
+.editor__fab--add:hover {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* PC에서는 FAB 숨기고 키보드 힌트만 표시 */
+@media (min-width: 768px) {
+  .editor__fabs {
+    display: none;
+  }
+}
+
+/* 우측 하단 패널 (엣지 스타일 + 줌) — PC 전용 */
+.editor__side-panels {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md) !important;
+  margin-right: var(--spacing-md) !important;
+}
+
+/* 엣지 스타일 피커 */
+.editor__edge-style-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.editor__edge-style-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.editor__edge-style-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.editor__edge-style-btn--active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* 줌 컨트롤 */
+.editor__zoom-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.editor__zoom-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.editor__zoom-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.editor__zoom-level {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  padding: 2px 0;
+  min-width: 32px;
+  text-align: center;
+}
+
+/* iOS Safari 키보드 선점용 프록시 input — 화면 밖에 배치 */
+.editor__focus-proxy {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* iOS 자동 줌 방지 */
+  pointer-events: none;
+}
+
+/* 키보드 힌트 (PC만) */
+.editor__hint {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: rgba(15, 15, 20, 0.8);
+  backdrop-filter: blur(8px);
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.editor__hint kbd {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+@media (min-width: 768px) {
+  .editor__hint {
+    display: block;
+  }
+}
+
+/* 모바일에서 미니맵/줌컨트롤 숨김 */
+@media (max-width: 768px) {
+  .react-flow__minimap {
+    display: none;
+  }
+
+  .editor__side-panels {
+    display: none !important;
+  }
+}
