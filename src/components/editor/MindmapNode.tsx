@@ -24,6 +24,9 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
   const isCollapsed = data.collapsed;
   const descendantCount = data.descendantCount || 0;
   const hasChildren = (data.childCount || 0) > 0;
+  const side = data.side || 'right';
+  const targetPos = side === 'left' ? Position.Right : Position.Left;
+  const sourcePos = side === 'left' ? Position.Left : Position.Right;
 
   // 편집 모드 진입 시 포커스 + 중앙 정렬 요청 이벤트 발행
   useEffect(() => {
@@ -153,14 +156,14 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
         selected ? 'mindmap-node--selected' : ''
       } ${isCollapsed ? 'mindmap-node--collapsed' : ''} ${
         isEditing ? 'mindmap-node--editing nodrag nopan' : ''
-      }`}
+      } ${!isRoot && side === 'left' ? 'mindmap-node--side-left' : ''}`}
       onDoubleClick={startEditing}
       onMouseDown={handleNodeMouseDown}
     >
       {!isRoot && (
         <Handle
           type="target"
-          position={Position.Left}
+          position={targetPos}
           className="mindmap-node__handle mindmap-node__handle--hidden"
           isConnectable={false}
         />
@@ -190,12 +193,31 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
         )}
       </span>
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="mindmap-node__handle mindmap-node__handle--hidden"
-        isConnectable={false}
-      />
+      {isRoot ? (
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            className="mindmap-node__handle mindmap-node__handle--hidden"
+            isConnectable={false}
+          />
+          <Handle
+            type="source"
+            position={Position.Left}
+            id="left"
+            className="mindmap-node__handle mindmap-node__handle--hidden"
+            isConnectable={false}
+          />
+        </>
+      ) : (
+        <Handle
+          type="source"
+          position={sourcePos}
+          className="mindmap-node__handle mindmap-node__handle--hidden"
+          isConnectable={false}
+        />
+      )}
 
       {hasChildren && (
         <button

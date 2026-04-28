@@ -30,6 +30,8 @@ export type RFNodeData = {
   childCount: number;
   descendantCount: number;
   collapsed: boolean;
+  /** 렌더용: root 기준 좌/우 — 핸들/엣지 방향 결정 (DB 비저장) */
+  side: 'left' | 'right';
   [key: string]: unknown;
 };
 
