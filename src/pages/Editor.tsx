@@ -507,7 +507,7 @@ function EditorInner() {
   useEffect(() => {
     if (!isInitialized.current) return;
     refreshVisibility();
-    updateMindmapSettings(mapId!, { edgeStyle });
+    updateMindmapSettings(mapId!, { edge_style: edgeStyle });
   }, [edgeStyle, refreshVisibility, mapId]);
 
   // ==========================================

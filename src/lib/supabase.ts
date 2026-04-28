@@ -64,7 +64,9 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+// Database 제네릭은 SDK 버전별 내부 타입과 충돌할 수 있어 미사용.
+// 대신 SELECT 결과에 DbMindmap / DbMindmapNode 로 직접 캐스팅.
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ============================================
 // 타입 변환 헬퍼 (DB ↔ 앱 내부 타입)
