@@ -17,8 +17,7 @@ import type { Mindmap, SyncMessage } from '../types/mindmap';
 import './Dashboard.css';
 
 // ── 타입 ──────────────────────────────────────────────────
-type SortBy = 'latest' | 'name' | 'favorites';
-type ViewMode = 'card' | 'list';
+type TabId = 'all' | 'favorites';
 
 // ── 인라인 SVG 아이콘 ──────────────────────────────────────
 const StarSVG = ({ filled }: { filled: boolean }) => (
@@ -41,38 +40,6 @@ const DotsVerticalSVG = () => (
   </svg>
 );
 
-const SearchSVG = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
-
-const GridSVG = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-    <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-    <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-    <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
-);
-
-const ListSVG = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M8 6h13M8 12h13M8 18h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="3.5" cy="6" r="1" fill="currentColor" />
-    <circle cx="3.5" cy="12" r="1" fill="currentColor" />
-    <circle cx="3.5" cy="18" r="1" fill="currentColor" />
-  </svg>
-);
-
-const SortToggleSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-    <path d="M7 3v18M7 3L4 6M7 3l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M17 21V3M17 21l-3-3M17 21l3-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
 const NodeSVG = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.8" />
@@ -87,33 +54,6 @@ const NodeSVG = () => (
   </svg>
 );
 
-/** 마인드맵 썸네일 플레이스홀더 */
-const MindmapThumbnail = () => (
-  <svg
-    className="dashboard__thumb-svg"
-    viewBox="0 0 200 120"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    {/* 중앙 노드 */}
-    <rect x="76" y="46" width="48" height="28" rx="14" fill="#6c5ce7" opacity="0.9" />
-    {/* 왼쪽 가지 */}
-    <line x1="76" y1="56" x2="46" y2="36" stroke="#6c5ce7" strokeWidth="1.5" opacity="0.5" />
-    <rect x="14" y="26" width="32" height="20" rx="10" fill="#6c5ce7" opacity="0.45" />
-    <line x1="76" y1="64" x2="46" y2="84" stroke="#6c5ce7" strokeWidth="1.5" opacity="0.5" />
-    <rect x="14" y="74" width="32" height="20" rx="10" fill="#6c5ce7" opacity="0.45" />
-    {/* 오른쪽 가지 */}
-    <line x1="124" y1="56" x2="154" y2="36" stroke="#6c5ce7" strokeWidth="1.5" opacity="0.5" />
-    <rect x="154" y="26" width="32" height="20" rx="10" fill="#6c5ce7" opacity="0.45" />
-    <line x1="124" y1="64" x2="154" y2="84" stroke="#6c5ce7" strokeWidth="1.5" opacity="0.5" />
-    <rect x="154" y="74" width="32" height="20" rx="10" fill="#6c5ce7" opacity="0.45" />
-    {/* 중앙 노드 안 점 (장식) */}
-    <circle cx="92" cy="60" r="3" fill="white" opacity="0.4" />
-    <circle cx="100" cy="60" r="3" fill="white" opacity="0.4" />
-    <circle cx="108" cy="60" r="3" fill="white" opacity="0.4" />
-  </svg>
-);
-
 // ── Dashboard 컴포넌트 ─────────────────────────────────────
 function Dashboard() {
   const navigate = useNavigate();
@@ -123,22 +63,11 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [nodeCounts, setNodeCounts] = useState<Record<string, number>>({});
 
-  // 검색 / 정렬 / 보기
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('latest');
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  // 탭
+  const [activeTab, setActiveTab] = useState<TabId>('all');
 
   // 3점 메뉴
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-
-  // 정렬 드롭다운
-  const [showSortMenu, setShowSortMenu] = useState(false);
-
-  const sortLabels: Record<SortBy, string> = {
-    latest: '최신순',
-    name: '이름순',
-    favorites: '즐겨찾기순',
-  };
 
   // 모달
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -155,23 +84,15 @@ function Dashboard() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── 파생 값 ──────────────────────────────────────────────
-  const filteredMaps = useMemo(() => {
-    let maps = [...mindmaps];
+  const favoritesCount = useMemo(
+    () => mindmaps.filter((m) => m.isFavorite).length,
+    [mindmaps],
+  );
 
-    if (sortBy === 'favorites') {
-      maps = maps.filter((m) => m.isFavorite);
-    } else if (sortBy === 'name') {
-      maps.sort((a, b) => a.title.localeCompare(b.title, 'ko'));
-    }
-    // 'latest'는 DB에서 이미 updatedAt desc 정렬
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      maps = maps.filter((m) => m.title.toLowerCase().includes(q));
-    }
-
-    return maps;
-  }, [mindmaps, sortBy, searchQuery]);
+  const filteredMaps = useMemo(
+    () => (activeTab === 'favorites' ? mindmaps.filter((m) => m.isFavorite) : mindmaps),
+    [mindmaps, activeTab],
+  );
 
   // ── 데이터 로드 ───────────────────────────────────────────
   const loadMindmaps = useCallback(async () => {
@@ -186,16 +107,11 @@ function Dashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    loadMindmaps();
-  }, [loadMindmaps]);
+  useEffect(() => { loadMindmaps(); }, [loadMindmaps]);
 
   useEffect(() => {
     const unsubscribe = subscribeSync((msg: SyncMessage) => {
-      if (
-        msg?.type === 'mindmap:list:changed' ||
-        msg?.type === 'mindmap:data:changed'
-      ) {
+      if (msg?.type === 'mindmap:list:changed' || msg?.type === 'mindmap:data:changed') {
         loadMindmaps();
       }
     });
@@ -268,25 +184,14 @@ function Dashboard() {
     try {
       await duplicateMindmap(mapId);
       loadMindmaps();
-      showToast('복제되었습니다');
+      showToastMsg('복제되었습니다');
     } catch (err) {
       console.error('복제 실패:', err);
     }
   };
 
-  // ── 공유하기 ──────────────────────────────────────────────
-  const handleShare = (mapId: string) => {
-    setActiveMenuId(null);
-    const url = `${window.location.origin}/map/${mapId}`;
-    navigator.clipboard.writeText(url).then(() => {
-      showToast('링크가 복사되었습니다');
-    }).catch(() => {
-      showToast('링크 복사에 실패했습니다');
-    });
-  };
-
   // ── 토스트 ────────────────────────────────────────────────
-  const showToast = (msg: string) => {
+  const showToastMsg = (msg: string) => {
     setToast(msg);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(null), 2200);
@@ -310,121 +215,15 @@ function Dashboard() {
 
   const deleteTarget = mindmaps.find((m) => m.id === showDeleteModal);
 
-  // ── 카드 뷰 아이템 ────────────────────────────────────────
-  const renderCardItem = (map: Mindmap) => (
-    <div
-      key={map.id}
-      className="dashboard__card-item"
-    >
-      {/* 썸네일 영역 */}
-      <div
-        className="dashboard__thumb"
-        onClick={() => navigate(`/map/${map.id}`)}
-      >
-        <MindmapThumbnail />
-        {/* 별 아이콘 (썸네일 우상단) */}
-        <button
-          className={`dashboard__card-star${map.isFavorite ? ' dashboard__card-star--active' : ''}`}
-          onClick={(e) => handleToggleFavorite(e, map)}
-          aria-label={map.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-        >
-          <StarSVG filled={!!map.isFavorite} />
-        </button>
-      </div>
-
-      {/* 카드 정보 영역 */}
-      <div className="dashboard__card-info">
-        <div className="dashboard__card-info-top">
-          {/* 제목 (편집 or 표시) */}
-          {editingMapId === map.id ? (
-            <input
-              ref={titleInputRef}
-              className="dashboard__card-title-input"
-              value={editingTitle}
-              onChange={(e) => setEditingTitle(e.target.value)}
-              onBlur={commitCardTitle}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                if (e.key === 'Enter') { e.preventDefault(); commitCardTitle(); }
-                if (e.key === 'Escape') setEditingMapId(null);
-              }}
-              maxLength={50}
-              autoComplete="off"
-              spellCheck={false}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <button
-              className="dashboard__card-title"
-              onClick={() => navigate(`/map/${map.id}`)}
-            >
-              {map.title}
-            </button>
-          )}
-
-          {/* 3점 메뉴 버튼 */}
-          <div className="dashboard__menu-wrap">
-            <button
-              className="dashboard__dots-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveMenuId(activeMenuId === map.id ? null : map.id);
-              }}
-              aria-label="더 보기"
-            >
-              <DotsVerticalSVG />
-            </button>
-            {activeMenuId === map.id && (
-              <div className="dashboard__dropdown">
-                <button className="dashboard__dropdown-item" onClick={() => handleShare(map.id)}>
-                  공유하기
-                </button>
-                <button className="dashboard__dropdown-item" onClick={() => startEditing(map)}>
-                  제목 수정
-                </button>
-                <button className="dashboard__dropdown-item" onClick={() => handleDuplicate(map.id)}>
-                  복제
-                </button>
-                <button
-                  className="dashboard__dropdown-item dashboard__dropdown-item--danger"
-                  onClick={() => { setActiveMenuId(null); setShowDeleteModal(map.id); }}
-                >
-                  삭제
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 하단 메타 (날짜 + 노드 수) */}
-        <div className="dashboard__card-meta">
-          <span className="dashboard__card-date">{formatDate(map.updatedAt)}</span>
-          <span className="dashboard__card-nodes">
-            <NodeSVG />
-            {nodeCounts[map.id] ?? 0}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── 목차형 아이템 ─────────────────────────────────────────
+  // ── 목록 아이템 ───────────────────────────────────────────
   const renderListItem = (map: Mindmap) => (
     <li key={map.id} className="dashboard__list-item">
-      {/* 썸네일 (소형) */}
-      <div
-        className="dashboard__list-thumb"
-        onClick={() => navigate(`/map/${map.id}`)}
-      >
-        <MindmapThumbnail />
-      </div>
-
       {/* 본문 */}
       <div className="dashboard__list-body" onClick={() => navigate(`/map/${map.id}`)}>
         {editingMapId === map.id ? (
           <input
             ref={titleInputRef}
-            className="dashboard__card-title-input"
+            className="dashboard__title-input"
             value={editingTitle}
             onChange={(e) => setEditingTitle(e.target.value)}
             onBlur={commitCardTitle}
@@ -441,9 +240,9 @@ function Dashboard() {
         ) : (
           <span className="dashboard__list-title">{map.title}</span>
         )}
-        <div className="dashboard__card-meta">
-          <span className="dashboard__card-date">{formatDate(map.updatedAt)}</span>
-          <span className="dashboard__card-nodes">
+        <div className="dashboard__list-meta">
+          <span className="dashboard__list-date">{formatDate(map.updatedAt)}</span>
+          <span className="dashboard__list-nodes">
             <NodeSVG />
             {nodeCounts[map.id] ?? 0}
           </span>
@@ -452,13 +251,16 @@ function Dashboard() {
 
       {/* 우측 액션 */}
       <div className="dashboard__list-actions">
+        {/* 즐겨찾기 별 */}
         <button
-          className={`dashboard__list-star${map.isFavorite ? ' dashboard__card-star--active' : ''}`}
+          className={`dashboard__star-btn${map.isFavorite ? ' dashboard__star-btn--active' : ''}`}
           onClick={(e) => handleToggleFavorite(e, map)}
           aria-label={map.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
         >
           <StarSVG filled={!!map.isFavorite} />
         </button>
+
+        {/* 3점 메뉴 */}
         <div className="dashboard__menu-wrap">
           <button
             className="dashboard__dots-btn"
@@ -471,21 +273,18 @@ function Dashboard() {
             <DotsVerticalSVG />
           </button>
           {activeMenuId === map.id && (
-            <div className="dashboard__dropdown dashboard__dropdown--left">
-              <button className="dashboard__dropdown-item" onClick={() => handleShare(map.id)}>
-                공유하기
-              </button>
+            <div className="dashboard__dropdown" onClick={(e) => e.stopPropagation()}>
               <button className="dashboard__dropdown-item" onClick={() => startEditing(map)}>
-                제목 수정
+                ✏️ 제목 수정
               </button>
               <button className="dashboard__dropdown-item" onClick={() => handleDuplicate(map.id)}>
-                복제
+                📋 복제
               </button>
               <button
                 className="dashboard__dropdown-item dashboard__dropdown-item--danger"
                 onClick={() => { setActiveMenuId(null); setShowDeleteModal(map.id); }}
               >
-                삭제
+                🗑️ 삭제
               </button>
             </div>
           )}
@@ -496,92 +295,37 @@ function Dashboard() {
 
   // ── 렌더 ──────────────────────────────────────────────────
   return (
-    <div className="dashboard" onClick={() => { setActiveMenuId(null); setShowSortMenu(false); }}>
+    <div className="dashboard" onClick={() => setActiveMenuId(null)}>
       <Header
         title="Mind Orbit"
         rightAction={
-          <button
-            className="dashboard__create-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <button className="dashboard__create-btn" onClick={() => setShowCreateModal(true)}>
             + 새 마인드맵
           </button>
         }
       />
 
       <main className="dashboard__content">
-        {/* 검색 바 */}
-        <div className="dashboard__search-wrap">
-          <span className="dashboard__search-icon"><SearchSVG /></span>
-          <input
-            className="dashboard__search"
-            type="search"
-            placeholder="마인드맵 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              className="dashboard__search-clear"
-              onClick={() => setSearchQuery('')}
-              aria-label="검색어 지우기"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        {/* 툴바: 섹션 레이블 + 정렬 + 보기모드 */}
-        <div className="dashboard__toolbar">
-          <div className="dashboard__section-label">
-            <span>모든 마인드맵</span>
-            <span className="dashboard__count-badge">{mindmaps.length}</span>
-          </div>
-
-          <div className="dashboard__toolbar-right">
-            {/* 정렬 토글 드롭다운 */}
-            <div className="dashboard__sort-wrap" onClick={(e) => e.stopPropagation()}>
-              <button
-                className="dashboard__sort-toggle"
-                onClick={() => setShowSortMenu((v) => !v)}
-              >
-                <SortToggleSVG />
-                {sortLabels[sortBy]}
-              </button>
-              {showSortMenu && (
-                <div className="dashboard__sort-dropdown">
-                  {(['latest', 'name', 'favorites'] as SortBy[]).map((key) => (
-                    <button
-                      key={key}
-                      className={`dashboard__sort-option${sortBy === key ? ' dashboard__sort-option--active' : ''}`}
-                      onClick={() => { setSortBy(key); setShowSortMenu(false); }}
-                    >
-                      {sortLabels[key]}
-                      {sortBy === key && <span className="dashboard__sort-dot" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 보기 모드 */}
-            <div className="dashboard__view-toggle">
-              <button
-                className={`dashboard__view-btn${viewMode === 'card' ? ' dashboard__view-btn--active' : ''}`}
-                onClick={() => setViewMode('card')}
-                aria-label="카드형 보기"
-              >
-                <GridSVG />
-              </button>
-              <button
-                className={`dashboard__view-btn${viewMode === 'list' ? ' dashboard__view-btn--active' : ''}`}
-                onClick={() => setViewMode('list')}
-                aria-label="목차형 보기"
-              >
-                <ListSVG />
-              </button>
-            </div>
-          </div>
+        {/* 탭 */}
+        <div className="dashboard__tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={activeTab === 'all'}
+            className={`dashboard__tab${activeTab === 'all' ? ' dashboard__tab--active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All
+            <span className="dashboard__tab-count">{mindmaps.length}</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'favorites'}
+            className={`dashboard__tab${activeTab === 'favorites' ? ' dashboard__tab--active' : ''}`}
+            onClick={() => setActiveTab('favorites')}
+          >
+            Favorites
+            <span className="dashboard__tab-count">{favoritesCount}</span>
+          </button>
         </div>
 
         {/* 콘텐츠 */}
@@ -592,17 +336,14 @@ function Dashboard() {
         ) : filteredMaps.length === 0 ? (
           <EmptyState
             icon={
-              searchQuery ? (
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7" stroke="var(--color-border)" strokeWidth="1.5" />
-                  <path d="M16.5 16.5L21 21" stroke="var(--color-border)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              ) : sortBy === 'favorites' ? (
+              activeTab === 'favorites' ? (
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                     stroke="var(--color-border)"
                     strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
               ) : (
@@ -617,21 +358,17 @@ function Dashboard() {
               )
             }
             title={
-              searchQuery
-                ? `"${searchQuery}" 검색 결과가 없어요`
-                : sortBy === 'favorites'
+              activeTab === 'favorites'
                 ? '즐겨찾기한 마인드맵이 없어요'
                 : '아직 마인드맵이 없어요'
             }
             description={
-              searchQuery
-                ? '다른 검색어를 입력해보세요.'
-                : sortBy === 'favorites'
+              activeTab === 'favorites'
                 ? '별 아이콘을 눌러 즐겨찾기에 추가해보세요.'
                 : '첫 번째 마인드맵을 만들어 생각을 정리해보세요.'
             }
             action={
-              !searchQuery && sortBy !== 'favorites' ? (
+              activeTab === 'all' ? (
                 <button
                   className="dashboard__create-btn dashboard__create-btn--large"
                   onClick={() => setShowCreateModal(true)}
@@ -641,10 +378,6 @@ function Dashboard() {
               ) : null
             }
           />
-        ) : viewMode === 'card' ? (
-          <div className="dashboard__grid">
-            {filteredMaps.map(renderCardItem)}
-          </div>
         ) : (
           <ul className="dashboard__list">
             {filteredMaps.map(renderListItem)}
@@ -666,9 +399,7 @@ function Dashboard() {
       )}
 
       {/* 토스트 */}
-      {toast && (
-        <div className="dashboard__toast">{toast}</div>
-      )}
+      {toast && <div className="dashboard__toast">{toast}</div>}
 
       {/* 생성 모달 */}
       <Modal
