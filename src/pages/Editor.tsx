@@ -368,7 +368,7 @@ function EditorInner() {
       try {
         const map = await getMindmap(mapId!);
         if (!map) {
-          navigate('/', { replace: true });
+          navigate('/dashboard', { replace: true });
           return;
         }
         setMapTitle(map.title);
@@ -425,7 +425,7 @@ function EditorInner() {
         }
       } catch (err) {
         console.error('맵 데이터 로드 실패:', err);
-        if (isInitial) navigate('/', { replace: true });
+        if (isInitial) navigate('/dashboard', { replace: true });
       } finally {
         if (isInitial) setLoading(false);
       }
@@ -447,7 +447,7 @@ function EditorInner() {
       if (msg.payload?.mapId !== mapId) return;
 
       if (msg.payload?.deleted) {
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
         return;
       }
 

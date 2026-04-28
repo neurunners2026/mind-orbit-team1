@@ -167,6 +167,7 @@ function Dashboard() {
     <div className="dashboard">
       <Header
         title="Mind Orbit"
+        titleLink="/"
         rightAction={
           <button className="dashboard__create-btn" onClick={() => setShowCreateModal(true)}>
             + 새 마인드맵
