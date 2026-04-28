@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Modal from '../components/common/Modal';
 import EmptyState from '../components/common/EmptyState';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getAllMindmaps,
   createMindmap,
@@ -117,6 +118,15 @@ const MindmapThumbnail = () => (
 // ── Dashboard 컴포넌트 ─────────────────────────────────────
 function Dashboard() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('로그아웃 실패:', err);
+    }
+  };
 
   // 데이터
   const [mindmaps, setMindmaps] = useState<Mindmap[]>([]);
@@ -500,12 +510,20 @@ function Dashboard() {
       <Header
         title="Mind Orbit"
         rightAction={
-          <button
-            className="dashboard__create-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
-            + 새 마인드맵
-          </button>
+          <div className="dashboard__header-actions">
+            <button
+              className="dashboard__logout-btn"
+              onClick={handleSignOut}
+            >
+              로그아웃
+            </button>
+            <button
+              className="dashboard__create-btn"
+              onClick={() => setShowCreateModal(true)}
+            >
+              + 새 마인드맵
+            </button>
+          </div>
         }
       />
 
