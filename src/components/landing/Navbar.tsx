@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { CTAButton } from './CTAButton'
+import { XIcon } from '../common/XIcon'
 
 type NavbarProps = {
   /** When false, hides in-page anchor links (e.g. on auth pages). */
@@ -70,10 +71,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
               className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
               aria-label="랜딩페이지로 돌아가기"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <XIcon />
             </button>
           ) : (
             <CTAButton

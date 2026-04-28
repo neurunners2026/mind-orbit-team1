@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 
 type AuthFormProps = {
   mode: 'login' | 'signup'
@@ -32,6 +32,9 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -58,9 +61,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
 
   const handleGoogleLogin = () => {
     setGoogleLoading(true)
-    setTimeout(() => {
-      onAuthenticated()
-    }, 1500)
+    timerRef.current = setTimeout(onAuthenticated, 1500)
   }
 
   const title = mode === 'login' ? '로그인' : '회원가입'
@@ -74,7 +75,6 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
         <h1 className="text-2xl font-semibold tracking-tight text-white">{title}</h1>
       </div>
 
-      {/* Google 로그인 버튼 */}
       <button
         type="button"
         onClick={handleGoogleLogin}
@@ -85,7 +85,6 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
         <span>{googleLoading ? 'Google 계정 확인 중...' : 'Google로 계속하기'}</span>
       </button>
 
-      {/* 구분선 */}
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-orbit-border" />
         <span className="text-xs text-zinc-500">또는 이메일로 계속하기</span>

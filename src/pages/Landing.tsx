@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Navbar } from '../components/landing/Navbar'
 import { HeroSection } from '../components/landing/HeroSection'
 import { ProblemSection } from '../components/landing/ProblemSection'
@@ -11,18 +11,21 @@ import { LoginModal } from '../components/auth/LoginModal'
 export default function Landing() {
   const [showLogin, setShowLogin] = useState(false)
 
+  const openLogin = useCallback(() => setShowLogin(true), [])
+  const closeLogin = useCallback(() => setShowLogin(false), [])
+
   return (
     <div className="min-h-dvh bg-orbit-bg">
-      <Navbar showSectionNav onLoginClick={() => setShowLogin(true)} />
+      <Navbar showSectionNav onLoginClick={openLogin} />
       <main>
-        <HeroSection onLoginClick={() => setShowLogin(true)} />
+        <HeroSection onLoginClick={openLogin} />
         <ProblemSection />
         <FeatureSection />
         <TargetSection />
-        <CtaSection onLoginClick={() => setShowLogin(true)} />
+        <CtaSection onLoginClick={openLogin} />
       </main>
       <Footer />
-      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      {showLogin && <LoginModal onClose={closeLogin} />}
     </div>
   )
 }
