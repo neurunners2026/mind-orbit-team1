@@ -16,6 +16,30 @@
   margin: 0 auto;
 }
 
+/* ── 헤더 액션 그룹 ── */
+.dashboard__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* ── 로그아웃 버튼 ── */
+.dashboard__logout-btn {
+  color: var(--color-text-muted);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.dashboard__logout-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-light);
+  background: var(--color-surface-hover);
+}
+
 /* ── 생성 버튼 (헤더용) ── */
 .dashboard__create-btn {
   background: var(--color-accent);
