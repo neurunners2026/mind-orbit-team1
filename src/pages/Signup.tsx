@@ -2,20 +2,22 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { Navbar } from '../components/landing/Navbar'
 import { AuthForm } from '../components/auth/AuthForm'
-import { useAuth } from '../context/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 
 type LocationState = {
   from?: { pathname: string }
 }
 
 export default function Signup() {
-  const { isAuthenticated } = useAuth()
+  const { session, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from =
-    (location.state as LocationState | null)?.from?.pathname ?? '/editor'
+    (location.state as LocationState | null)?.from?.pathname ?? '/dashboard'
 
-  if (isAuthenticated) {
+  if (loading) return null
+
+  if (session) {
     return <Navigate to={from} replace />
   }
 

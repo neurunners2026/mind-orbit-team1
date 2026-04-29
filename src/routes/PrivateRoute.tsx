@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 
 type PrivateRouteProps = {
   children: ReactNode
 }
 
 export function PrivateRoute({ children }: PrivateRouteProps) {
-  const { isAuthenticated } = useAuth()
+  const { session, loading } = useAuth()
   const location = useLocation()
 
-  if (!isAuthenticated) {
+  if (loading) return null
+
+  if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

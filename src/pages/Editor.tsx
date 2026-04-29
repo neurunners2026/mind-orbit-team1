@@ -29,6 +29,13 @@ import {
 } from '../utils/db';
 import { layoutTree, deriveEdges, calcNewNodePosition } from '../utils/layout';
 import { getHiddenIds, computeNodeStats, buildChildrenMap } from '../utils/tree';
+import { buildSideMap, isLeftOfRoot } from '../utils/side';
+import {
+  HistoryStack,
+  snapshotPersisted,
+  type HistoryActionType,
+  type PersistedNode,
+} from '../utils/history';
 import type { MindmapNodeData, RFNodeData, EdgeStyleId, SyncMessage } from '../types/mindmap';
 
 type RFNode = Node<RFNodeData, 'mindmap'>;
@@ -61,6 +68,21 @@ function EditorInner() {
   const isInitialized = useRef(false);
 
   const allNodesRef = useRef<MindmapNodeData[]>([]);
+
+  // ==========================================
+  // Undo/Redo 스택 + 드래그 시작 스냅샷
+  // ==========================================
+  const historyRef = useRef<HistoryStack>(new HistoryStack());
+  const dragStartRef = useRef<{
+    nodeId: string;
+    before: PersistedNode[];
+    startX: number;
+    startSide: 'left' | 'right' | null; // root-direct-child일 때만 의미
+  } | null>(null);
+  // 현재 드래그 중인 원본 노드 id — 본 ref가 set되어 있으면
+  // (1) handleNodesChange가 해당 id의 position change를 필터링해 본체를 잠그고,
+  // (2) rfNodes에 ghost 노드(`__ghost__-<id>`)가 떠있는 상태.
+  const dragGhostIdRef = useRef<string | null>(null);
   // keyboardHeight는 렌더에 사용하지 않으므로 ref만으로 관리 (불필요한 리렌더 방지)
   const keyboardHeightRef = useRef(0);
   // iOS Safari: touchstart에서 preventDefault()하면 click이 발생하지 않을 수 있음.
@@ -73,6 +95,8 @@ function EditorInner() {
   // FAB 탭 → (동기) 프록시 input focus → 키보드 열림 →
   // (비동기) 실제 노드 input이 마운트되면 포커스 이전 → 키보드 유지
   const focusProxyRef = useRef<HTMLInputElement>(null);
+  const siblingFabRef = useRef<HTMLButtonElement>(null);
+  const childFabRef = useRef<HTMLButtonElement>(null);
 
   // ==========================================
   // 모바일 키보드 높이 감지 + FAB 컨테이너를 visual viewport에 동기화
@@ -128,11 +152,11 @@ function EditorInner() {
   //
   // - Case A (키보드 이미 열림): 즉시 배치
   // - Case C (키보드 새로 열림): VV resize 안정화 후 배치
-  // PC에서는 사용자의 패닝/줌을 존중하기 위해 개입하지 않음.
+  // - 터치: 노드를 보이는 영역 상단 1/3에 배치 + 줌 보정
+  // - PC: 노드가 화면 밖이면 화면 안으로 최소한의 패닝만 수행
   // ==========================================
   useEffect(() => {
     const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-    if (!isTouchDevice) return;
 
     const handleEditStarted = (e: Event) => {
       const nodeId = (e as CustomEvent).detail as string;
@@ -140,9 +164,6 @@ function EditorInner() {
       if (!node) return;
 
       const currentZoom = getZoom();
-      const targetZoom =
-        currentZoom < 0.8 ? 1 : currentZoom > 2 ? 2 : currentZoom;
-
       const w = node.measured?.width ?? 100;
       const h = node.measured?.height ?? 40;
       const cx = (node.position?.x ?? 0) + w / 2;
@@ -151,9 +172,51 @@ function EditorInner() {
       // NaN 방어 — 좌표가 유효하지 않으면 센터링 생략
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) return;
 
-      // 키보드가 이미 열려 있으면 편집→편집 전환 상태.
-      // 이때 300ms 애니메이션은 React Flow 리렌더를 유발하여
-      // 포커스가 불안정해지고 키보드 깜빡임을 일으킴 → duration: 0
+      // ── PC: 화면 밖 노드만 화면 안으로 최소 패닝 ──
+      if (!isTouchDevice) {
+        const canvasEl = document.querySelector('.editor__canvas');
+        if (!canvasEl) return;
+
+        const canvasRect = canvasEl.getBoundingClientRect();
+        const PADDING = 60;
+
+        // React Flow 내부 transform에서 현재 뷰포트 행렬 추출
+        const transformEl = canvasEl.querySelector('.react-flow__viewport');
+        if (!transformEl) return;
+        const matrix = new DOMMatrix(getComputedStyle(transformEl).transform);
+
+        // 노드 중심의 화면상 좌표
+        const screenX = cx * matrix.a + matrix.e + canvasRect.left;
+        const screenY = cy * matrix.d + matrix.f + canvasRect.top;
+
+        // 화면 안에 있으면 아무것도 하지 않음
+        if (
+          screenX >= canvasRect.left + PADDING &&
+          screenX <= canvasRect.right - PADDING &&
+          screenY >= canvasRect.top + PADDING &&
+          screenY <= canvasRect.bottom - PADDING
+        ) return;
+
+        // 화면 밖이면 최소한의 패닝으로 화면 안으로 이동
+        let dx = 0;
+        let dy = 0;
+        if (screenX < canvasRect.left + PADDING) dx = canvasRect.left + PADDING - screenX;
+        if (screenX > canvasRect.right - PADDING) dx = canvasRect.right - PADDING - screenX;
+        if (screenY < canvasRect.top + PADDING) dy = canvasRect.top + PADDING - screenY;
+        if (screenY > canvasRect.bottom - PADDING) dy = canvasRect.bottom - PADDING - screenY;
+
+        setViewport(
+          { x: matrix.e + dx, y: matrix.f + dy, zoom: currentZoom },
+          { duration: 200 },
+        );
+        return;
+      }
+
+      // ── 터치: 상단 1/3 배치 + 줌 보정 ──
+      // 너무 축소된 상태(0.5 미만)에서만 살짝 보정, 그 외에는 현재 줌 유지
+      const targetZoom =
+        currentZoom < 0.5 ? 0.6 : currentZoom > 2 ? 2 : currentZoom;
+
       const kbAlreadyOpen = keyboardHeightRef.current > 0;
       const animDuration = kbAlreadyOpen ? 0 : 300;
 
@@ -175,17 +238,13 @@ function EditorInner() {
         const vpX = targetLocalX - cx * targetZoom;
         const vpY = targetLocalY - cy * targetZoom;
 
-        // NaN이면 setViewport 호출하지 않음
         if (!Number.isFinite(vpX) || !Number.isFinite(vpY)) return;
         setViewport({ x: vpX, y: vpY, zoom: targetZoom }, { duration: animDuration });
       };
 
       if (kbAlreadyOpen) {
-        // Case A: 키보드가 이미 열린 상태 → 즉시 배치 (애니메이션 없이)
         doPosition();
       } else {
-        // Case C: 키보드가 새로 올라오는 중 →
-        // visualViewport resize가 멈출 때까지(≈150ms) 대기 후 배치
         const vv = window.visualViewport;
         if (!vv) {
           doPosition();
@@ -211,7 +270,6 @@ function EditorInner() {
 
         vv.addEventListener('resize', onVVResize);
 
-        // 안전장치: 600ms 내에 resize 이벤트가 없으면 그냥 배치
         fallbackTimer = setTimeout(() => {
           cleanup();
           doPosition();
@@ -240,6 +298,9 @@ function EditorInner() {
     const hiddenIds = getHiddenIds(allNodes, collapsedIds, childrenMap);
     const visibleNodes = allNodes.filter((n) => !hiddenIds.has(n.id));
 
+    const rootId = allNodes.find((n) => !n.parentId)?.id;
+    const sideMap = rootId ? buildSideMap(allNodes, rootId) : {};
+
     const rfReady = visibleNodes.map((n) => ({
       id: n.id,
       type: 'mindmap' as const,
@@ -251,11 +312,12 @@ function EditorInner() {
         childCount: childCountMap[n.id] || 0,
         descendantCount: descendantCountMap[n.id] || 0,
         collapsed: n.collapsed || false,
+        side: sideMap[n.id] || 'right',
       },
     }));
 
     setRfNodes(rfReady);
-    setRfEdges(deriveEdges(visibleNodes, edgeStyle));
+    setRfEdges(deriveEdges(visibleNodes, edgeStyle, rootId));
   }, [setRfNodes, setRfEdges, edgeStyle]);
 
   // ==========================================
@@ -276,6 +338,7 @@ function EditorInner() {
 
     const rootId = allNodes.find((n) => !n.parentId)?.id;
     const laidOut = layoutTree(visibleNodes, rootId);
+    const sideMap = rootId ? buildSideMap(laidOut, rootId) : {};
 
     const rfReady = laidOut.map((n) => ({
       id: n.id,
@@ -288,6 +351,7 @@ function EditorInner() {
         childCount: childCountMap[n.id] || 0,
         descendantCount: descendantCountMap[n.id] || 0,
         collapsed: n.collapsed || false,
+        side: sideMap[n.id] || 'right',
       },
     }));
 
@@ -297,8 +361,47 @@ function EditorInner() {
     });
 
     setRfNodes(rfReady);
-    setRfEdges(deriveEdges(visibleNodes, edgeStyle));
+    setRfEdges(deriveEdges(visibleNodes, edgeStyle, rootId));
   }, [setRfNodes, setRfEdges, edgeStyle]);
+
+  // ==========================================
+  // Undo/Redo helpers
+  // ==========================================
+  const pushHistory = useCallback(
+    (
+      type: HistoryActionType,
+      before: PersistedNode[],
+      after: PersistedNode[],
+      nodeId?: string,
+    ) => {
+      historyRef.current.push({ type, nodeId, before, after });
+    },
+    [],
+  );
+
+  const restoreFromSnapshot = useCallback(
+    (snap: PersistedNode[]) => {
+      // 기존 measuredWidth/Height는 id가 살아있으면 보존, 아니면 폐기
+      const existingById: Record<string, MindmapNodeData> = {};
+      for (const n of allNodesRef.current) existingById[n.id] = n;
+
+      allNodesRef.current = snap.map((s) => {
+        const prev = existingById[s.id];
+        return {
+          id: s.id,
+          mapId: prev?.mapId,
+          parentId: s.parentId,
+          sortOrder: s.sortOrder,
+          collapsed: s.collapsed,
+          label: s.label,
+          position: { x: s.position.x, y: s.position.y },
+          measuredWidth: prev?.measuredWidth,
+          measuredHeight: prev?.measuredHeight,
+        } as MindmapNodeData;
+      });
+    },
+    [],
+  );
 
   // ==========================================
   // 자동 저장 (디바운스 1초)
@@ -368,7 +471,7 @@ function EditorInner() {
       try {
         const map = await getMindmap(mapId!);
         if (!map) {
-          navigate('/dashboard', { replace: true });
+          navigate('/', { replace: true });
           return;
         }
         setMapTitle(map.title);
@@ -410,6 +513,8 @@ function EditorInner() {
 
         allNodesRef.current = loadedNodes;
         isInitialized.current = true;
+        // 외부에서 데이터가 갱신되었으므로 history는 stale → 초기화
+        historyRef.current.clear();
 
         if (
           isInitial &&
@@ -425,7 +530,7 @@ function EditorInner() {
         }
       } catch (err) {
         console.error('맵 데이터 로드 실패:', err);
-        if (isInitial) navigate('/dashboard', { replace: true });
+        if (isInitial) navigate('/', { replace: true });
       } finally {
         if (isInitial) setLoading(false);
       }
@@ -447,7 +552,7 @@ function EditorInner() {
       if (msg.payload?.mapId !== mapId) return;
 
       if (msg.payload?.deleted) {
-        navigate('/dashboard', { replace: true });
+        navigate('/', { replace: true });
         return;
       }
 
@@ -471,17 +576,66 @@ function EditorInner() {
   useEffect(() => {
     if (!isInitialized.current) return;
     refreshVisibility();
-    updateMindmapSettings(mapId!, { edgeStyle });
+    updateMindmapSettings(mapId!, { edge_style: edgeStyle });
   }, [edgeStyle, refreshVisibility, mapId]);
 
   // ==========================================
-  // 노드 드래그
+  // 노드 드래그 / 치수 변경
+  //
+  // 좌측 흐름 노드(side === 'left')는 텍스트 길이가 변할 때 오른쪽 변이 고정되어야
+  // 부모와의 연결점(노드 우측)이 어긋나지 않음. 따라서 dimensions change에서
+  // width 변화량만큼 x를 반대로 보정한 후, React Flow에도 합성 position change를
+  // 함께 전달해 시각/내부 상태를 동기화한다.
   // ==========================================
   const handleNodesChange = useCallback(
     (changes: NodeChange<RFNode>[]) => {
-      onNodesChange(changes);
+      const rootId = allNodesRef.current.find((n) => !n.parentId)?.id;
+      const sideMap = rootId
+        ? buildSideMap(allNodesRef.current, rootId)
+        : {};
 
-      const dimChanges = changes.filter(
+      // 좌측 노드의 width 변화에 따라 x를 보정 — 합성 position change로 augment
+      // Lock & Ghost: 드래그 중인 원본 id의 position change는 제거해서 본체를 자리에 붙박음
+      const augmented: NodeChange<RFNode>[] = [];
+      const dragSourceId = dragGhostIdRef.current;
+      for (const c of changes) {
+        if (
+          dragSourceId &&
+          c.type === 'position' &&
+          'id' in c &&
+          c.id === dragSourceId
+        ) {
+          continue; // 원본 잠금
+        }
+        augmented.push(c);
+        if (
+          c.type === 'dimensions' &&
+          'dimensions' in c &&
+          c.dimensions &&
+          sideMap[c.id] === 'left'
+        ) {
+          const node = allNodesRef.current.find((n) => n.id === c.id);
+          const oldWidth = node?.measuredWidth;
+          const newWidth = c.dimensions.width;
+          if (
+            node &&
+            oldWidth !== undefined &&
+            oldWidth !== newWidth
+          ) {
+            const newX = node.position.x - (newWidth - oldWidth);
+            node.position = { x: newX, y: node.position.y };
+            augmented.push({
+              id: c.id,
+              type: 'position',
+              position: { x: newX, y: node.position.y },
+            });
+          }
+        }
+      }
+
+      onNodesChange(augmented);
+
+      const dimChanges = augmented.filter(
         (c) => c.type === 'dimensions' && 'dimensions' in c && c.dimensions,
       );
       dimChanges.forEach((c) => {
@@ -494,7 +648,7 @@ function EditorInner() {
         }
       });
 
-      const posChanges = changes.filter(
+      const posChanges = augmented.filter(
         (c) => c.type === 'position' && 'position' in c && c.position,
       );
       if (posChanges.length > 0) {
@@ -511,22 +665,36 @@ function EditorInner() {
   );
 
   // ==========================================
-  // 노드 라벨 편집 감지
+  // 노드 라벨 편집 감지 + history push
   // ==========================================
   useEffect(() => {
     if (!isInitialized.current) return;
+    const before = snapshotPersisted(allNodesRef.current);
     let changed = false;
+    let changedId: string | undefined;
     rfNodes.forEach((rfn) => {
       const orig = allNodesRef.current.find((n) => n.id === rfn.id);
       if (orig && orig.label !== rfn.data.label) {
         orig.label = rfn.data.label;
-        orig.measuredWidth = undefined;
-        orig.measuredHeight = undefined;
+        // measuredWidth/Height는 의도적으로 클리어하지 않음:
+        // - commit 시점의 라벨은 typing 중 마지막 editValue와 동일 → 마지막 측정값이
+        //   여전히 정확하다.
+        // - 좌측 흐름 노드의 right-anchor width 보정은 이전 measuredWidth를 oldWidth로
+        //   필요로 하므로, 여기서 클리어하면 다음 편집 첫 dim change에서 보정이 스킵됨.
         changed = true;
+        changedId = rfn.id;
       }
     });
-    if (changed) triggerAutoSave();
-  }, [rfNodes, triggerAutoSave]);
+    if (changed) {
+      pushHistory(
+        'edit',
+        before,
+        snapshotPersisted(allNodesRef.current),
+        changedId,
+      );
+      triggerAutoSave();
+    }
+  }, [rfNodes, triggerAutoSave, pushHistory]);
 
   // ==========================================
   // 줌 레벨 추적
@@ -546,10 +714,221 @@ function EditorInner() {
   );
 
   // ==========================================
+  // 노드 드래그 시작
+  // - undo 용 스냅샷 + collapsed-move용 시작 위치/side 캐시
+  // - "Lock & Ghost": 원본을 잠그기 위해 dragGhostIdRef 설정 + rfNodes에 클론(ghost) 주입
+  //   원본은 data.isDragSource: true로 마킹해 반투명 처리
+  // ==========================================
+  const onNodeDragStart = useCallback(
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
+      const orig = allNodesRef.current.find((n) => n.id === node.id);
+      if (!orig) return;
+      const rootId = allNodesRef.current.find((n) => !n.parentId)?.id;
+      const root = rootId
+        ? allNodesRef.current.find((n) => n.id === rootId)
+        : undefined;
+      const isRootDirectChild = !!(root && orig.parentId === root.id);
+      const startSide: 'left' | 'right' | null = isRootDirectChild
+        ? isLeftOfRoot(orig, root!)
+          ? 'left'
+          : 'right'
+        : null;
+      dragStartRef.current = {
+        nodeId: node.id,
+        before: snapshotPersisted(allNodesRef.current),
+        startX: orig.position.x,
+        startSide,
+      };
+
+      // Lock & Ghost: source + 모든 자손을 isDragSource로 마킹(서브트리 시각 피드백)
+      // + 클론(ghost) 노드 주입(커서 따라가는 미리보기는 source 단독으로 표시)
+      const sourceId = node.id;
+      const ghostId = `__ghost__-${sourceId}`;
+      dragGhostIdRef.current = sourceId;
+
+      const childrenMap = buildChildrenMap(allNodesRef.current);
+      const subtreeIds = new Set<string>([sourceId]);
+      {
+        const stack = [...(childrenMap[sourceId] || [])];
+        while (stack.length) {
+          const cur = stack.pop()!;
+          subtreeIds.add(cur.id);
+          stack.push(...(childrenMap[cur.id] || []));
+        }
+      }
+
+      setRfNodes((nds) => {
+        const sourceNode = nds.find((n) => n.id === sourceId);
+        if (!sourceNode) return nds;
+        const ghostNode: RFNode = {
+          ...sourceNode,
+          id: ghostId,
+          position: { ...sourceNode.position },
+          draggable: false,
+          selectable: false,
+          focusable: false,
+          data: { ...sourceNode.data, isGhost: true, isDragSource: false },
+        };
+        return [
+          ...nds.map((n) =>
+            subtreeIds.has(n.id)
+              ? { ...n, data: { ...n.data, isDragSource: true } }
+              : n,
+          ),
+          ghostNode,
+        ];
+      });
+    },
+    [setRfNodes],
+  );
+
+  // ==========================================
+  // 노드 드래그 중 — 클론(ghost)의 position을 cursor 위치로 추적
+  // 원본은 handleNodesChange에서 position change가 필터링되어 그대로 잠김
+  // ==========================================
+  const onNodeDrag = useCallback(
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
+      if (!dragGhostIdRef.current || dragGhostIdRef.current !== node.id) return;
+      const ghostId = `__ghost__-${node.id}`;
+      setRfNodes((nds) =>
+        nds.map((n) =>
+          n.id === ghostId
+            ? { ...n, position: { x: node.position.x, y: node.position.y } }
+            : n,
+        ),
+      );
+    },
+    [setRfNodes],
+  );
+
+  // ==========================================
+  // 노드 드래그 종료
+  // - Lock & Ghost: 드래그 중 본체 position이 갱신되지 않았으므로
+  //   여기서 callback의 node.position(누적 드롭 위치)으로 동기화
+  // - collapsed면 자손 따라오기, root-direct-child + side 바뀜이면 자손 좌우 대칭
+  // - history push, ghost 제거
+  // ==========================================
+  const onNodeDragStop = useCallback(
+    (_e: unknown, node: { id: string; position: { x: number; y: number } }) => {
+      const cleanupGhost = () => {
+        dragGhostIdRef.current = null;
+        // refreshVisibility가 allNodesRef로부터 rfNodes를 다시 빌드하므로
+        // ghost는 자동으로 제거되고 isDragSource 마킹도 해제됨
+      };
+
+      const ctx = dragStartRef.current;
+      if (!ctx || ctx.nodeId !== node.id) {
+        cleanupGhost();
+        dragStartRef.current = null;
+        refreshVisibility();
+        return;
+      }
+      const dragged = allNodesRef.current.find((n) => n.id === node.id);
+      if (!dragged) {
+        cleanupGhost();
+        dragStartRef.current = null;
+        refreshVisibility();
+        return;
+      }
+
+      // Lock으로 인해 갱신되지 않았던 본체 position을 드롭 위치로 commit
+      dragged.position = { x: node.position.x, y: node.position.y };
+
+      const dx = dragged.position.x - ctx.startX;
+      const startY = ctx.before.find((b) => b.id === node.id)?.position.y;
+      const dy =
+        startY !== undefined ? dragged.position.y - startY : 0;
+
+      // 드래그 = 서브트리 이동: 항상 모든 자손에 동일 delta 적용
+      // (clone+delay 방식이라 collapsed 여부와 무관하게 통째로 옮기는 게 자연스러움)
+      {
+        const childrenMap = buildChildrenMap(allNodesRef.current);
+        const stack = [...(childrenMap[dragged.id] || [])];
+        while (stack.length) {
+          const cur = stack.pop()!;
+          cur.position = {
+            x: cur.position.x + dx,
+            y: cur.position.y + dy,
+          };
+          stack.push(...(childrenMap[cur.id] || []));
+        }
+      }
+
+      // root-direct-child가 좌↔우 가로지른 경우 → 자손 좌우 대칭 변환
+      if (ctx.startSide) {
+        const rootId = allNodesRef.current.find((n) => !n.parentId)?.id;
+        const root = rootId
+          ? allNodesRef.current.find((n) => n.id === rootId)
+          : undefined;
+        if (root) {
+          const endSide: 'left' | 'right' = isLeftOfRoot(dragged, root)
+            ? 'left'
+            : 'right';
+          if (endSide !== ctx.startSide) {
+            const draggedWidth =
+              dragged.measuredWidth ||
+              Math.max(80, (dragged.label.length || 1) * 8 + 36);
+            const V = dragged.position.x + draggedWidth / 2;
+            const childrenMap = buildChildrenMap(allNodesRef.current);
+            const stack = [...(childrenMap[dragged.id] || [])];
+            while (stack.length) {
+              const cur = stack.pop()!;
+              const w =
+                cur.measuredWidth ||
+                Math.max(80, (cur.label.length || 1) * 8 + 36);
+              cur.position = {
+                x: 2 * V - cur.position.x - w,
+                y: cur.position.y,
+              };
+              stack.push(...(childrenMap[cur.id] || []));
+            }
+          }
+        }
+      }
+
+      pushHistory(
+        'move',
+        ctx.before,
+        snapshotPersisted(allNodesRef.current),
+        node.id,
+      );
+
+      dragStartRef.current = null;
+      cleanupGhost();
+      refreshVisibility();
+      triggerAutoSave();
+    },
+    [pushHistory, refreshVisibility, triggerAutoSave],
+  );
+
+  // ==========================================
+  // Undo / Redo 적용
+  // ==========================================
+  const undo = useCallback(() => {
+    const entry = historyRef.current.undo();
+    if (!entry) return;
+    restoreFromSnapshot(entry.before);
+    setSelectedNodeId(null);
+    refreshVisibility();
+    triggerAutoSave();
+  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave]);
+
+  const redo = useCallback(() => {
+    const entry = historyRef.current.redo();
+    if (!entry) return;
+    restoreFromSnapshot(entry.after);
+    setSelectedNodeId(null);
+    refreshVisibility();
+    triggerAutoSave();
+  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave]);
+
+  // ==========================================
   // 노드 삽입 공통 로직: allNodesRef에 추가 → 위치 계산 → 선택 → 편집 진입
   // ==========================================
   const insertNodeAndEdit = useCallback(
     (parentId: string) => {
+      const before = snapshotPersisted(allNodesRef.current);
+
       const siblingCount = allNodesRef.current.filter(
         (n) => n.parentId === parentId,
       ).length;
@@ -567,6 +946,13 @@ function EditorInner() {
       allNodesRef.current = [...allNodesRef.current, newNode];
       newNode.position = calcNewNodePosition(allNodesRef.current, newId);
 
+      pushHistory(
+        'create',
+        before,
+        snapshotPersisted(allNodesRef.current),
+        newId,
+      );
+
       refreshVisibility();
       triggerAutoSave();
       setSelectedNodeId(newId);
@@ -580,7 +966,7 @@ function EditorInner() {
         );
       }, 80);
     },
-    [refreshVisibility, triggerAutoSave, setRfNodes],
+    [refreshVisibility, triggerAutoSave, setRfNodes, pushHistory],
   );
 
   // ==========================================
@@ -641,15 +1027,22 @@ function EditorInner() {
       return ids;
     }
 
+    const before = snapshotPersisted(allNodesRef.current);
     const idsToDelete = new Set(collectDescendants(selectedNodeId));
     allNodesRef.current = allNodesRef.current.filter(
       (n) => !idsToDelete.has(n.id),
+    );
+    pushHistory(
+      'delete',
+      before,
+      snapshotPersisted(allNodesRef.current),
+      selectedNodeId,
     );
 
     refreshVisibility();
     triggerAutoSave();
     setSelectedNodeId(null);
-  }, [selectedNodeId, refreshVisibility, triggerAutoSave]);
+  }, [selectedNodeId, refreshVisibility, triggerAutoSave, pushHistory]);
 
   // ==========================================
   // 편집 중 Enter/Tab → 노드 생성 이벤트 수신
@@ -686,6 +1079,20 @@ function EditorInner() {
         return;
       if (e.isComposing || e.keyCode === 229) return;
       if (e.repeat) return;
+
+      const meta = e.metaKey || e.ctrlKey;
+      const k = e.key.toLowerCase();
+      if (meta && k === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((meta && k === 'z' && e.shiftKey) || (meta && k === 'y')) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
       switch (e.key) {
         case 'Tab':
           e.preventDefault();
@@ -704,13 +1111,46 @@ function EditorInner() {
           break;
       }
     },
-    [addChildNode, addSiblingNode, deleteSelectedNode],
+    [addChildNode, addSiblingNode, deleteSelectedNode, undo, redo],
   );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // ==========================================
+  // FAB touchstart 리스너 — { passive: false }로 등록
+  //
+  // React의 onTouchStart는 passive 리스너로 등록되어
+  // preventDefault() 호출 시 콘솔 에러가 발생함.
+  // ref + addEventListener로 직접 등록하여 해결.
+  // ==========================================
+  useEffect(() => {
+    const siblingBtn = siblingFabRef.current;
+    const childBtn = childFabRef.current;
+
+    const handleSiblingTouch = (e: TouchEvent) => {
+      e.preventDefault();
+      touchFiredRef.current = true;
+      focusProxyRef.current?.focus();
+      addSiblingNode();
+    };
+    const handleChildTouch = (e: TouchEvent) => {
+      e.preventDefault();
+      touchFiredRef.current = true;
+      focusProxyRef.current?.focus();
+      addChildNode();
+    };
+
+    siblingBtn?.addEventListener('touchstart', handleSiblingTouch, { passive: false });
+    childBtn?.addEventListener('touchstart', handleChildTouch, { passive: false });
+
+    return () => {
+      siblingBtn?.removeEventListener('touchstart', handleSiblingTouch);
+      childBtn?.removeEventListener('touchstart', handleChildTouch);
+    };
+  }, [addSiblingNode, addChildNode]);
 
   // ==========================================
   // 렌더링
@@ -763,6 +1203,9 @@ function EditorInner() {
           edges={rfEdges}
           onNodesChange={handleNodesChange}
           onSelectionChange={onSelectionChange}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           nodesConnectable={false}
           onMoveEnd={onMoveEnd}
           nodeTypes={nodeTypes}
@@ -844,16 +1287,9 @@ function EditorInner() {
              액션을 touchstart에서 직접 실행. click은 마우스 전용 fallback. */}
         <div className="editor__fab-group-right">
           <button
+            ref={siblingFabRef}
             className="editor__fab editor__fab--add"
             disabled={isEffectiveRoot}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              touchFiredRef.current = true;
-              // 키보드 열림 여부와 무관하게 프록시 포커스 —
-              // 기존 input blur → 새 input focus 사이 공백에서 키보드가 내려가는 걸 방지
-              focusProxyRef.current?.focus();
-              addSiblingNode();
-            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (touchFiredRef.current) { touchFiredRef.current = false; return; }
@@ -879,13 +1315,8 @@ function EditorInner() {
             </svg>
           </button>
           <button
+            ref={childFabRef}
             className="editor__fab editor__fab--add"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              touchFiredRef.current = true;
-              focusProxyRef.current?.focus();
-              addChildNode();
-            }}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (touchFiredRef.current) { touchFiredRef.current = false; return; }

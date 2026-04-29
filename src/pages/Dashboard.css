@@ -28,6 +28,18 @@
   white-space: nowrap;
 }
 .dashboard__create-btn:hover { background: var(--color-accent-hover); }
+.dashboard__logout-btn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+.dashboard__logout-btn:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
 .dashboard__create-btn--large {
   padding: var(--spacing-md) var(--spacing-xl);
   font-size: var(--font-size-base);

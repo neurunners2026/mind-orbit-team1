@@ -24,6 +24,11 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
   const isCollapsed = data.collapsed;
   const descendantCount = data.descendantCount || 0;
   const hasChildren = (data.childCount || 0) > 0;
+  const side = data.side || 'right';
+  const targetPos = side === 'left' ? Position.Right : Position.Left;
+  const sourcePos = side === 'left' ? Position.Left : Position.Right;
+  const isGhost = data.isGhost === true;
+  const isDragSource = data.isDragSource === true;
 
   // 편집 모드 진입 시 포커스 + 중앙 정렬 요청 이벤트 발행
   useEffect(() => {
@@ -122,6 +127,34 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
     commitLabel();
   }, [commitLabel]);
 
+  // Outside-click commit
+  // - input의 onBlur만으로는 종료가 보장되지 않는 경우가 있음:
+  //   (a) React Flow pane이 mousedown에서 preventDefault를 호출 → focus shift 차단되어 blur 미발생
+  //   (b) 편집 모드 진입 직후 useEffect가 input.focus() 부르기 전에 사용자가 빠르게 배경을 누름
+  //       → 잃을 focus가 없어 blur 미발생
+  // - capture 단계로 document에 pointerdown을 걸어 React Flow보다 먼저 commit
+  // - editValue 변동마다 listener 재등록되는 비효율을 막기 위해 commitLabel은 ref로 우회
+  const commitLabelRef = useRef(commitLabel);
+  useEffect(() => {
+    commitLabelRef.current = commitLabel;
+  }, [commitLabel]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handle = (e: PointerEvent) => {
+      if (e.button !== 0) return; // 우클릭 등은 제외 (터치는 button === 0)
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      const editingEl = inputRef.current?.closest('.mindmap-node');
+      if (editingEl && editingEl.contains(t)) return; // 편집 노드 내부 클릭은 무시
+      // input unmount로 인한 auto-blur가 commitLabel을 또 부르지 않도록 선제 마킹
+      committedByKeyRef.current = true;
+      commitLabelRef.current();
+    };
+    document.addEventListener('pointerdown', handle, true);
+    return () => document.removeEventListener('pointerdown', handle, true);
+  }, [isEditing]);
+
   const toggleCollapse = (e: React.MouseEvent) => {
     e.stopPropagation();
     window.dispatchEvent(
@@ -153,14 +186,16 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
         selected ? 'mindmap-node--selected' : ''
       } ${isCollapsed ? 'mindmap-node--collapsed' : ''} ${
         isEditing ? 'mindmap-node--editing nodrag nopan' : ''
-      }`}
+      } ${!isRoot && side === 'left' ? 'mindmap-node--side-left' : ''} ${
+        isDragSource ? 'mindmap-node--drag-source' : ''
+      } ${isGhost ? 'mindmap-node--drag-ghost' : ''}`}
       onDoubleClick={startEditing}
       onMouseDown={handleNodeMouseDown}
     >
       {!isRoot && (
         <Handle
           type="target"
-          position={Position.Left}
+          position={targetPos}
           className="mindmap-node__handle mindmap-node__handle--hidden"
           isConnectable={false}
         />
@@ -190,12 +225,31 @@ function MindmapNode({ id, data, selected }: NodeProps<MindmapNodeType>) {
         )}
       </span>
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="mindmap-node__handle mindmap-node__handle--hidden"
-        isConnectable={false}
-      />
+      {isRoot ? (
+        <>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            className="mindmap-node__handle mindmap-node__handle--hidden"
+            isConnectable={false}
+          />
+          <Handle
+            type="source"
+            position={Position.Left}
+            id="left"
+            className="mindmap-node__handle mindmap-node__handle--hidden"
+            isConnectable={false}
+          />
+        </>
+      ) : (
+        <Handle
+          type="source"
+          position={sourcePos}
+          className="mindmap-node__handle mindmap-node__handle--hidden"
+          isConnectable={false}
+        />
+      )}
 
       {hasChildren && (
         <button

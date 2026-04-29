@@ -1,72 +1,11 @@
-import Dexie from 'dexie';
+import { supabase, dbToMindmap, dbToNode, nodeToDb } from '../lib/supabase';
+import type { DbMindmap, DbMindmapNode } from '../lib/supabase';
 import type { Mindmap, MindmapNodeData, SyncMessage } from '../types/mindmap';
 
-// Mind Orbit IndexedDB 데이터베이스
-const db = new Dexie('MindOrbitDB');
-
-// 스키마 정의
-// - id: 커스텀 UUID 문자열 (자동 증가 아님 → 멀티디바이스 동기화에 안전)
-// - nodes에 parentId로 부모-자식 관계 표현 (별도 edges 테이블 불필요)
-// - sortOrder: 형제 노드 순서 보장
-// - collapsed: 접힌 상태 영속화
-db.version(1).stores({
-  mindmaps: 'id, updatedAt',
-  nodes: 'id, mapId, parentId',
-});
-
-db.version(2).stores({
-  mindmaps: 'id, updatedAt, isFavorite',
-  nodes: 'id, mapId, parentId',
-});
-
-export default db;
-
 // ============================================
-// 탭 간 동기화 채널 (BroadcastChannel API)
+// 유틸
 // ============================================
-const SYNC_CHANNEL_NAME = 'mindorbit-sync';
-const TAB_ID: string =
-  typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random()}`;
 
-let syncChannel: BroadcastChannel | null = null;
-if (typeof BroadcastChannel !== 'undefined') {
-  try {
-    syncChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
-  } catch {
-    /* no-op */
-  }
-}
-
-export function getTabId(): string {
-  return TAB_ID;
-}
-
-export function subscribeSync(
-  handler: (msg: SyncMessage) => void,
-): () => void {
-  if (!syncChannel) return () => {};
-  const listener = (e: MessageEvent) => {
-    if (!e?.data || e.data.tabId === TAB_ID) return;
-    handler(e.data as SyncMessage);
-  };
-  syncChannel.addEventListener('message', listener);
-  return () => syncChannel!.removeEventListener('message', listener);
-}
-
-function broadcast(type: string, payload?: Record<string, unknown>): void {
-  if (!syncChannel) return;
-  try {
-    syncChannel.postMessage({ type, tabId: TAB_ID, payload, at: Date.now() });
-  } catch {
-    /* no-op */
-  }
-}
-
-// ============================================
-// 유틸: UUID 생성
-// ============================================
 export function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -74,172 +13,207 @@ export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+async function getUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('로그인이 필요합니다.');
+  return user.id;
+}
+
 // ============================================
 // 마인드맵 CRUD
 // ============================================
 
-/** 새 마인드맵 생성 (루트 노드 포함) */
 export async function createMindmap(title = '새 마인드맵'): Promise<string> {
-  const now = new Date().toISOString();
+  const userId = await getUserId();
   const mapId = generateId();
+  const now = new Date().toISOString();
 
-  await db.table('mindmaps').add({
+  const { error: mapError } = await supabase.from('mindmaps').insert({
     id: mapId,
+    user_id: userId,
     title,
-    createdAt: now,
-    updatedAt: now,
+    is_favorite: false,
+    created_at: now,
+    updated_at: now,
   });
+  if (mapError) throw mapError;
 
-  await db.table('nodes').add({
+  const { error: nodeError } = await supabase.from('mindmap_nodes').insert({
     id: generateId(),
-    mapId,
-    parentId: null,
-    sortOrder: 0,
-    collapsed: false,
+    map_id: mapId,
+    parent_id: null,
     label: title,
-    position: { x: 0, y: 0 },
+    sort_order: 0,
+    collapsed: false,
+    position_x: 0,
+    position_y: 0,
   });
+  if (nodeError) throw nodeError;
 
-  broadcast('mindmap:list:changed', { mapId });
   return mapId;
 }
 
-/** 모든 마인드맵 목록 조회 (최신순) */
 export async function getAllMindmaps(): Promise<Mindmap[]> {
-  return db.table('mindmaps').orderBy('updatedAt').reverse().toArray();
+  const { data, error } = await supabase
+    .from('mindmaps')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as DbMindmap[]).map(dbToMindmap);
 }
 
-/** 마인드맵 삭제 (관련 노드도 함께) */
+export async function getMindmap(mapId: string): Promise<Mindmap | undefined> {
+  const { data, error } = await supabase
+    .from('mindmaps')
+    .select('*')
+    .eq('id', mapId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? dbToMindmap(data as DbMindmap) : undefined;
+}
+
 export async function deleteMindmap(mapId: string): Promise<void> {
-  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
-    await db.table('mindmaps').delete(mapId);
-    await db.table('nodes').where('mapId').equals(mapId).delete();
-  });
-  broadcast('mindmap:list:changed', { mapId, deleted: true });
-  broadcast('mindmap:data:changed', { mapId, deleted: true });
+  const { error } = await supabase.from('mindmaps').delete().eq('id', mapId);
+  if (error) throw error;
+  // mindmap_nodes는 ON DELETE CASCADE로 자동 삭제됨
 }
 
-/** 마인드맵 제목 수정 */
-export async function updateMindmapTitle(
-  mapId: string,
-  title: string,
-): Promise<void> {
-  await db.table('mindmaps').update(mapId, {
-    title,
-    updatedAt: new Date().toISOString(),
-  });
-  broadcast('mindmap:list:changed', { mapId });
-  broadcast('mindmap:meta:changed', { mapId });
+export async function deleteMindmaps(mapIds: string[]): Promise<void> {
+  const { error } = await supabase.from('mindmaps').delete().in('id', mapIds);
+  if (error) throw error;
 }
 
-/** 특정 맵의 노드 전체 조회 */
-export async function getNodesByMapId(
-  mapId: string,
-): Promise<MindmapNodeData[]> {
-  return db.table('nodes').where('mapId').equals(mapId).toArray();
+export async function updateMindmapTitle(mapId: string, title: string): Promise<void> {
+  const { error } = await supabase
+    .from('mindmaps')
+    .update({ title, updated_at: new Date().toISOString() })
+    .eq('id', mapId);
+  if (error) throw error;
 }
 
-/** 마인드맵 메타 조회 */
-export async function getMindmap(
-  mapId: string,
-): Promise<Mindmap | undefined> {
-  return db.table('mindmaps').get(mapId);
-}
-
-/** 마인드맵 설정 업데이트 (엣지 스타일 등) */
 export async function updateMindmapSettings(
   mapId: string,
   settings: Record<string, unknown>,
 ): Promise<void> {
-  await db.table('mindmaps').update(mapId, {
-    ...settings,
-    updatedAt: new Date().toISOString(),
-  });
-  broadcast('mindmap:meta:changed', { mapId });
+  const { error } = await supabase
+    .from('mindmaps')
+    .update({ ...settings, updated_at: new Date().toISOString() })
+    .eq('id', mapId);
+  if (error) throw error;
 }
 
-/** 모든 맵의 노드 수를 일괄 조회 */
+export async function toggleFavorite(mapId: string, isFavorite: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('mindmaps')
+    .update({ is_favorite: isFavorite })
+    .eq('id', mapId);
+  if (error) throw error;
+}
+
+// ============================================
+// 노드 CRUD
+// ============================================
+
+export async function getNodesByMapId(mapId: string): Promise<MindmapNodeData[]> {
+  const { data, error } = await supabase
+    .from('mindmap_nodes')
+    .select('*')
+    .eq('map_id', mapId)
+    .order('sort_order');
+  if (error) throw error;
+  return ((data ?? []) as DbMindmapNode[]).map(dbToNode);
+}
+
 export async function getAllNodeCounts(): Promise<Record<string, number>> {
-  const nodes: MindmapNodeData[] = await db.table('nodes').toArray();
+  const { data, error } = await supabase
+    .from('mindmap_nodes')
+    .select('map_id');
+  if (error) throw error;
   const counts: Record<string, number> = {};
-  for (const node of nodes) {
-    if (node.mapId) {
-      counts[node.mapId] = (counts[node.mapId] ?? 0) + 1;
-    }
+  for (const row of data ?? []) {
+    counts[row.map_id] = (counts[row.map_id] ?? 0) + 1;
   }
   return counts;
 }
 
-/** 마인드맵 복제 (노드 포함) */
-export async function duplicateMindmap(mapId: string): Promise<string> {
-  const original = await getMindmap(mapId);
-  if (!original) throw new Error('Mindmap not found');
-  const nodes = await getNodesByMapId(mapId);
-
-  const now = new Date().toISOString();
-  const newMapId = generateId();
-
-  // 구 node ID → 신 node ID 매핑
-  const idMap = new Map<string, string>();
-  for (const node of nodes) idMap.set(node.id, generateId());
-
-  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
-    await db.table('mindmaps').add({
-      id: newMapId,
-      title: `${original.title} 복사본`,
-      createdAt: now,
-      updatedAt: now,
-      edgeStyle: original.edgeStyle,
-      isFavorite: false,
-    });
-    const newNodes = nodes.map((n) => ({
-      ...n,
-      id: idMap.get(n.id)!,
-      mapId: newMapId,
-      parentId: n.parentId ? (idMap.get(n.parentId) ?? null) : null,
-    }));
-    if (newNodes.length) await db.table('nodes').bulkAdd(newNodes);
-  });
-
-  broadcast('mindmap:list:changed', { mapId: newMapId });
-  return newMapId;
-}
-
-/** 즐겨찾기 토글 */
-export async function toggleFavorite(mapId: string, isFavorite: boolean): Promise<void> {
-  await db.table('mindmaps').update(mapId, { isFavorite });
-  broadcast('mindmap:list:changed', { mapId });
-}
-
-/** 다중 마인드맵 일괄 삭제 */
-export async function deleteMindmaps(mapIds: string[]): Promise<void> {
-  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
-    await db.table('mindmaps').bulkDelete(mapIds);
-    for (const id of mapIds) {
-      await db.table('nodes').where('mapId').equals(id).delete();
-    }
-  });
-  broadcast('mindmap:list:changed', { deleted: true });
-}
-
-/**
- * 맵의 노드를 통째로 저장 (자동저장용)
- * 각 노드: { id, parentId, sortOrder, collapsed, label, position }
- */
 export async function saveMapData(
   mapId: string,
   nodes: Omit<MindmapNodeData, 'mapId'>[],
 ): Promise<void> {
-  await db.transaction('rw', db.table('mindmaps'), db.table('nodes'), async () => {
-    await db.table('nodes').where('mapId').equals(mapId).delete();
+  const { error: deleteError } = await supabase
+    .from('mindmap_nodes')
+    .delete()
+    .eq('map_id', mapId);
+  if (deleteError) throw deleteError;
 
-    const taggedNodes = nodes.map((n) => ({ ...n, mapId }));
-    if (taggedNodes.length) await db.table('nodes').bulkAdd(taggedNodes);
+  if (nodes.length > 0) {
+    const rows = nodes.map((n) => nodeToDb(n, mapId));
+    const { error: insertError } = await supabase
+      .from('mindmap_nodes')
+      .insert(rows);
+    if (insertError) throw insertError;
+  }
 
-    await db.table('mindmaps').update(mapId, {
-      updatedAt: new Date().toISOString(),
-    });
+  const { error: updateError } = await supabase
+    .from('mindmaps')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', mapId);
+  if (updateError) throw updateError;
+}
+
+// ============================================
+// 복제
+// ============================================
+
+export async function duplicateMindmap(mapId: string): Promise<string> {
+  const original = await getMindmap(mapId);
+  if (!original) throw new Error('Mindmap not found');
+  const nodes = await getNodesByMapId(mapId);
+  const userId = await getUserId();
+
+  const now = new Date().toISOString();
+  const newMapId = generateId();
+
+  const idMap = new Map<string, string>();
+  for (const node of nodes) idMap.set(node.id, generateId());
+
+  const { error: mapError } = await supabase.from('mindmaps').insert({
+    id: newMapId,
+    user_id: userId,
+    title: `${original.title} 복사본`,
+    edge_style: original.edgeStyle ?? null,
+    is_favorite: false,
+    created_at: now,
+    updated_at: now,
   });
-  broadcast('mindmap:data:changed', { mapId });
-  broadcast('mindmap:list:changed', { mapId });
+  if (mapError) throw mapError;
+
+  if (nodes.length > 0) {
+    const newNodes = nodes.map((n) => ({
+      id: idMap.get(n.id)!,
+      map_id: newMapId,
+      parent_id: n.parentId ? (idMap.get(n.parentId) ?? null) : null,
+      label: n.label,
+      sort_order: n.sortOrder,
+      collapsed: n.collapsed,
+      position_x: n.position.x,
+      position_y: n.position.y,
+    }));
+    const { error: nodeError } = await supabase.from('mindmap_nodes').insert(newNodes);
+    if (nodeError) throw nodeError;
+  }
+
+  return newMapId;
+}
+
+// ============================================
+// 호환성 스텁 (BroadcastChannel → 서버 저장으로 대체됨)
+// ============================================
+
+export function subscribeSync(_handler: (msg: SyncMessage) => void): () => void {
+  return () => {};
+}
+
+export function getTabId(): string {
+  return generateId();
 }

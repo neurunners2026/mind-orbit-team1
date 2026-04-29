@@ -10,13 +10,20 @@
   padding: 8px 16px;
   min-width: 80px;
   max-width: 280px;
-  cursor: grab;
+  /* 노드는 클릭/상호작용 영역으로 인식되도록 pointer.
+     배경(react-flow__pane)은 grab 그대로 두어 pan과 시각적으로 구분됨. */
+  cursor: pointer;
   transition: border-color var(--transition-fast),
               box-shadow var(--transition-fast),
               transform var(--transition-fast);
   user-select: none;
   display: inline-flex;
   align-items: center;
+}
+
+/* 드래그 중에는 grabbing으로 시각 피드백 */
+.mindmap-node:active {
+  cursor: grabbing;
 }
 
 .mindmap-node:hover {
@@ -61,7 +68,24 @@
 .mindmap-node__label-wrap {
   display: inline-grid;
   min-width: 20px;
-  min-height: 1.4em; /* 빈 라벨이어도 line-height만큼 높이 유지 */
+  /* min-height의 em 기준은 라벨의 font-size에 맞춰야 라벨 line-height와 정확히 일치.
+     wrap이 별도 font-size를 두지 않으면 부모(.mindmap-node)의 16px이 em 기준이 되어
+     wrap이 라벨보다 살짝 커지고, 편집 모드 input의 content area에 여유가 생기면서
+     텍스트가 미세하게 아래로 보이는 현상이 발생함. */
+  font-size: var(--font-size-sm);
+  min-height: 1.4em;
+}
+
+.mindmap-node--root .mindmap-node__label-wrap {
+  font-size: var(--font-size-base);
+}
+
+/* 터치 디바이스에서는 라벨/input이 1rem으로 승격되므로 wrap도 따라가야
+   min-height(1.4em)이 라벨 line-height와 계속 일치 */
+@media (pointer: coarse) {
+  .mindmap-node__label-wrap {
+    font-size: 1rem;
+  }
 }
 
 /* 라벨과 input을 같은 grid cell에 겹쳐 배치 → 둘 다 인라인 흐름으로 렌더되어 수직 정렬 일치 */
@@ -256,4 +280,53 @@
 
 .mindmap-node--root .mindmap-node__collapse-count {
   color: white;
+}
+
+/* ============================================
+   좌측 흐름 노드 (root의 좌측에 자리잡은 직속 자식과 그 자손)
+   - 텍스트 우측 정렬
+   - 접기/펼치기 버튼을 노드 왼쪽 경계에 걸치도록 이동
+   ============================================ */
+.mindmap-node--side-left {
+  /* min-width(80px) 등으로 노드가 텍스트보다 넓을 때, 라벨/input을 우측에 붙임.
+     편집 모드 input은 inset:0로 자체 폭이 노드 전체라 text-align만으로 충분하지만,
+     평상시 라벨은 inline-flex 기본 정렬(start) 영향으로 왼쪽에 붙으므로 명시 필요 */
+  justify-content: flex-end;
+}
+
+.mindmap-node--side-left .mindmap-node__label,
+.mindmap-node--side-left .mindmap-node__input {
+  text-align: right;
+}
+
+.mindmap-node--side-left .mindmap-node__collapse-btn {
+  right: auto;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.mindmap-node--side-left .mindmap-node__collapse-btn:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* ============================================
+   드래그: 원본(잠금) + 클론(고스트)
+   - 원본은 자리 지키며 반투명 (cut/paste 미리보기 메타포)
+   - 클론은 커서를 따라가며 강조 + 클릭 통과
+   ============================================ */
+.mindmap-node--drag-source {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+  /* 드래그 중에는 hover/transition으로 색이 덮이지 않도록 */
+  transition: none;
+}
+
+.mindmap-node--drag-ghost {
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--color-accent-light),
+              0 8px 20px rgba(0, 0, 0, 0.4);
+  /* 미세한 회전으로 "들어올린" 느낌 */
+  transform: rotate(-1deg);
+  transition: none;
+  z-index: 1000;
 }

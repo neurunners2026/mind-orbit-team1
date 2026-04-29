@@ -1,7 +1,7 @@
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Navbar } from '../components/landing/Navbar'
 import { AuthForm } from '../components/auth/AuthForm'
-import { useAuth } from '../context/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 
 type LocationState = {
   from?: { pathname: string }
@@ -9,19 +9,20 @@ type LocationState = {
 }
 
 export default function Login() {
-  const { login, isAuthenticated } = useAuth()
+  const { session, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState | null
   const from = state?.from?.pathname ?? '/dashboard'
   const signupComplete = state?.signupComplete === true
 
-  if (isAuthenticated) {
+  if (loading) return null
+
+  if (session) {
     return <Navigate to={from} replace />
   }
 
   const handleAuthenticated = () => {
-    login()
     navigate(from, { replace: true })
   }
 

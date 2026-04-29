@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/useAuth'
 import { AuthForm } from './AuthForm'
 import { XIcon } from '../common/XIcon'
 
@@ -8,11 +7,9 @@ type LoginModalProps = {
 }
 
 export function LoginModal({ onClose }: LoginModalProps) {
-  const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleAuthenticated = () => {
-    login()
     navigate('/dashboard')
   }
 
