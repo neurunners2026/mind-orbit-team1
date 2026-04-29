@@ -6,6 +6,48 @@ type AuthFormProps = {
   onAuthenticated: () => void
 }
 
+/**
+ * Supabase / 네트워크 에러를 사용자 친화적인 한글 메시지로 변환.
+ * 매칭되지 않는 경우 fallback 메시지.
+ */
+function humanizeAuthError(err: unknown): string {
+  if (!(err instanceof Error)) return '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+
+  const msg = err.message || ''
+
+  // TypeError("Failed to fetch")는 fetch 자체가 실패한 경우
+  if (err.name === 'TypeError' || /failed to fetch/i.test(msg)) {
+    return '네트워크 연결에 문제가 있어요. 잠시 후 다시 시도해주세요.'
+  }
+
+  // Supabase 에러 메시지 매핑
+  if (/email rate limit exceeded/i.test(msg)) {
+    return '잠시 후에 다시 시도해주세요. (요청이 너무 많아요)'
+  }
+  if (/invalid login credentials/i.test(msg)) {
+    return '이메일 또는 비밀번호가 올바르지 않아요.'
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return '이메일 인증이 완료되지 않았어요. 받은 메일을 확인해주세요.'
+  }
+  if (/user already registered/i.test(msg) || /이미 가입된 이메일/.test(msg)) {
+    // AuthContext에서 던진 한글 메시지는 그대로 통과
+    return /이미 가입된 이메일/.test(msg)
+      ? msg
+      : '이미 가입된 이메일이에요.'
+  }
+  if (/password should be at least/i.test(msg)) {
+    return '비밀번호가 너무 짧아요. 최소 6자 이상으로 설정해주세요.'
+  }
+  if (/over_email_send_rate_limit/i.test(msg)) {
+    return '인증 메일 발송 한도에 도달했어요. 잠시 후 다시 시도해주세요.'
+  }
+
+  // 한글 메시지면 그대로, 영문이면 fallback
+  if (/[가-힣]/.test(msg)) return msg
+  return '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+}
+
 function Spinner() {
   return (
     <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -52,7 +94,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
       }
       onAuthenticated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setError(humanizeAuthError(err))
     } finally {
       setSubmitting(false)
     }

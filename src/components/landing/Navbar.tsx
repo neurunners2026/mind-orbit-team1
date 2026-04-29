@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { CTAButton } from './CTAButton'
 import { XIcon } from '../common/XIcon'
+import { useAuth } from '../../contexts/AuthContext'
 
 type NavbarProps = {
   /** When false, hides in-page anchor links (e.g. on auth pages). */
@@ -16,6 +17,7 @@ const navItemClass =
 
 export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
   const navigate = useNavigate()
+  const { session } = useAuth()
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-orbit-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -73,6 +75,14 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             >
               <XIcon />
             </button>
+          ) : session ? (
+            <CTAButton
+              variant="secondary"
+              className="px-4 py-2 text-xs sm:text-sm"
+              onClick={() => navigate('/dashboard')}
+            >
+              대시보드로
+            </CTAButton>
           ) : (
             <CTAButton
               variant="secondary"
