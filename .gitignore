@@ -7,6 +7,7 @@ node_modules
 # Build
 dist
 dist-ssr
+tsconfig.tsbuildinfo
 
 # Editor
 .vscode/*
@@ -16,6 +17,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code (로컬 설정 / 도구 설정)
+.claude/
 
 # Env
 *.local

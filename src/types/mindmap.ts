@@ -30,6 +30,12 @@ export type RFNodeData = {
   childCount: number;
   descendantCount: number;
   collapsed: boolean;
+  /** 렌더용: root 기준 좌/우 — 핸들/엣지 방향 결정 (DB 비저장) */
+  side: 'left' | 'right';
+  /** 드래그 클론(ghost) 노드 — 커서를 따라가는 미리보기 */
+  isGhost?: boolean;
+  /** 드래그 중인 원본 노드 — 잠긴 채 자리 지키며 반투명으로 표시 */
+  isDragSource?: boolean;
   [key: string]: unknown;
 };
 
