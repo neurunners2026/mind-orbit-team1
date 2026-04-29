@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     // 로그인/로그아웃 상태 변화 구독

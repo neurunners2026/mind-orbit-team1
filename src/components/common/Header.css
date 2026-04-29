@@ -49,6 +49,20 @@
   text-overflow: ellipsis;
 }
 
+.header__title--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background var(--transition-fast);
+}
+
+.header__title--link:hover {
+  background: var(--color-surface-hover);
+}
+
 .header__title--editable {
   cursor: pointer;
   border-radius: var(--radius-sm);

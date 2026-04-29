@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import './Header.css';
 
 interface HeaderProps {
@@ -8,6 +8,8 @@ interface HeaderProps {
   rightAction?: ReactNode;
   /** 전달 시 제목을 클릭하면 인라인 편집 모드로 진입 */
   onTitleChange?: (newTitle: string) => void;
+  /** 전달 시 제목을 해당 경로로 이동하는 링크로 렌더링 */
+  titleLink?: string;
 }
 
 function Header({
@@ -15,6 +17,7 @@ function Header({
   showBack = false,
   rightAction = null,
   onTitleChange,
+  titleLink,
 }: HeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +64,7 @@ function Header({
         {showBack && (
           <button
             className="header__back-btn"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             aria-label="대시보드로 돌아가기"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -88,6 +91,10 @@ function Header({
             autoComplete="off"
             spellCheck={false}
           />
+        ) : titleLink ? (
+          <Link to={titleLink} className="header__title header__title--link">
+            {title || 'Mind Orbit'}
+          </Link>
         ) : (
           <h1
             className={`header__title ${onTitleChange ? 'header__title--editable' : ''}`}

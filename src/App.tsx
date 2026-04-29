@@ -1,49 +1,37 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Dashboard from './pages/Dashboard';
-import Editor from './pages/Editor';
-import AuthPage from './pages/AuthPage';
-import type { ReactNode } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { PrivateRoute } from './routes/PrivateRoute'
+import Landing from './pages/Landing'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Dashboard from './pages/Dashboard'
+import Editor from './pages/Editor'
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
-
-  if (loading) return null;
-  if (!session) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/login" element={<AuthPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/map/:mapId"
-        element={
-          <ProtectedRoute>
-            <Editor />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-}
-
-function App() {
+export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/map/:mapId"
+          element={
+            <PrivateRoute>
+              <Editor />
+            </PrivateRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AuthProvider>
-  );
+  )
 }
-
-export default App;
