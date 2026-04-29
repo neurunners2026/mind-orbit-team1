@@ -55,11 +55,13 @@ export type Database = {
 // Supabase 클라이언트
 // ============================================
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://placeholder.supabase.co';
-const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || 'placeholder-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-if (supabaseUrl === 'https://placeholder.supabase.co') {
-  console.warn('VITE_SUPABASE_URL 또는 VITE_SUPABASE_PUBLISHABLE_KEY 환경변수가 설정되지 않았습니다.');
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'VITE_SUPABASE_URL 또는 VITE_SUPABASE_PUBLISHABLE_KEY 환경변수가 설정되지 않았습니다.',
+  );
 }
 
 // Database 제네릭은 SDK 버전별 내부 타입과 충돌할 수 있어 미사용.
