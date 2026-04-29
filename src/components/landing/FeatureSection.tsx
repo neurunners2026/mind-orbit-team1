@@ -31,7 +31,8 @@ export function FeatureSection() {
         {features.map((f, i) => (
           <div
             key={f.name}
-            className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-orbit-surface to-orbit-bg p-[1px] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:shadow-black/40 hover:border-violet-500/30"
+            className="reveal-on-scroll neon-hover-card group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-orbit-surface to-orbit-bg p-[1px]"
+            style={{ ['--reveal-delay' as string]: `${120 + i * 90}ms` }}
           >
             <div className="h-full rounded-2xl bg-orbit-surface/95 p-6 md:p-7">
               <span className="text-xs font-semibold text-violet-300/80">

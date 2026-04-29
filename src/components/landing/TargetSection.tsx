@@ -46,10 +46,11 @@ export function TargetSection() {
       title="이런 분들을 위해 만들었습니다"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        {audiences.map((item) => (
+        {audiences.map((item, index) => (
           <div
             key={item.title}
-            className="flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:shadow-black/40 hover:border-white/[0.12]"
+            className="reveal-on-scroll neon-hover-card flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7"
+            style={{ ['--reveal-delay' as string]: `${120 + index * 80}ms` }}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/80 text-white">
               {item.icon}
