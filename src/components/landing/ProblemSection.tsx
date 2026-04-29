@@ -24,10 +24,11 @@ export function ProblemSection() {
       description="아이디어는 네트워크인데, 대부분의 업무 도구는 여전히 선형 문서에 가깝습니다."
     >
       <div className="grid gap-5 md:grid-cols-3">
-        {pains.map((card) => (
+        {pains.map((card, index) => (
           <article
             key={card.title}
-            className="rounded-2xl border border-orbit-border bg-orbit-surface/80 p-6 shadow-md shadow-black/25 transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:shadow-black/40 hover:border-white/[0.12]"
+            className="reveal-on-scroll neon-hover-card rounded-2xl border border-orbit-border bg-orbit-surface/80 p-6 shadow-md shadow-black/25"
+            style={{ ['--reveal-delay' as string]: `${120 + index * 90}ms` }}
           >
             <h3 className="text-lg font-semibold text-zinc-50">{card.title}</h3>
             <p className="mt-3 text-sm leading-relaxed text-zinc-400">

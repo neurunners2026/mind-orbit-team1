@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Navbar } from '../components/landing/Navbar'
 import { HeroSection } from '../components/landing/HeroSection'
 import { ProblemSection } from '../components/landing/ProblemSection'
@@ -13,6 +13,29 @@ export default function Landing() {
 
   const openLogin = useCallback(() => setShowLogin(true), [])
   const closeLogin = useCallback(() => setShowLogin(false), [])
+
+  useEffect(() => {
+    const elements = Array.from(
+      document.querySelectorAll<HTMLElement>('.reveal-on-scroll'),
+    )
+
+    if (elements.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          entry.target.classList.add('is-visible')
+          obs.unobserve(entry.target)
+        })
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' },
+    )
+
+    elements.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div className="min-h-dvh bg-orbit-bg">

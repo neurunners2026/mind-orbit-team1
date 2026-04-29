@@ -30,15 +30,15 @@ export function LandingSection({
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className={headerAlign}>
           {eyebrow ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/90">
+            <p className="reveal-on-scroll text-xs font-semibold uppercase tracking-[0.2em] text-violet-300/90">
               {eyebrow}
             </p>
           ) : null}
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl md:text-[2.35rem] md:leading-snug">
+          <h2 className="reveal-on-scroll mt-3 text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl md:text-[2.35rem] md:leading-snug [--reveal-delay:80ms]">
             {title}
           </h2>
           {description ? (
-            <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+            <p className="reveal-on-scroll mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg [--reveal-delay:140ms]">
               {description}
             </p>
           ) : null}
@@ -46,7 +46,9 @@ export function LandingSection({
         {children ? (
           <div
             className={
-              align === 'center' ? 'mt-14 md:mt-20' : 'mt-12 md:mt-16'
+              align === 'center'
+                ? 'reveal-on-scroll mt-14 md:mt-20 [--reveal-delay:180ms]'
+                : 'reveal-on-scroll mt-12 md:mt-16 [--reveal-delay:180ms]'
             }
           >
             {children}
