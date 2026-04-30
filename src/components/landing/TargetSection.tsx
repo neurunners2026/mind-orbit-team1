@@ -52,11 +52,11 @@ export function TargetSection() {
             className="reveal-on-scroll neon-hover-card flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7"
             style={{ ['--reveal-delay' as string]: `${120 + index * 80}ms` }}
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/80 text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orbit-accent text-white">
               {item.icon}
             </span>
-            <h3 className="text-base font-semibold text-white">{item.title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-400">{item.description}</p>
+            <h3 className="text-lg font-medium text-zinc-100">{item.title}</h3>
+            <p className="text-sm leading-relaxed text-orbit-muted">{item.description}</p>
           </div>
         ))}
       </div>

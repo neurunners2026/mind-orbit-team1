@@ -37,12 +37,12 @@ export default function Signup() {
       <Navbar showSectionNav={false} showClose />
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-lg flex-col justify-center px-4 py-16 sm:px-6">
         <AuthForm mode="signup" onAuthenticated={handleSignupSuccess} />
-        <p className="mt-8 text-center text-sm text-zinc-500">
+        <p className="mt-8 text-center text-sm text-orbit-muted">
           이미 계정이 있나요?{' '}
           <Link
             to="/login"
             state={location.state}
-            className="font-medium text-violet-300 underline-offset-4 hover:text-violet-200 hover:underline"
+            className="font-medium text-orbit-accent underline-offset-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:underline"
           >
             로그인
           </Link>

@@ -31,15 +31,15 @@ export function FeatureSection() {
         {features.map((f, i) => (
           <div
             key={f.name}
-            className="reveal-on-scroll neon-hover-card group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-br from-orbit-surface to-orbit-bg p-[1px]"
+            className="reveal-on-scroll neon-hover-card group relative overflow-hidden rounded-2xl border border-orbit-border bg-orbit-surface p-[1px]"
             style={{ ['--reveal-delay' as string]: `${120 + i * 90}ms` }}
           >
-            <div className="h-full rounded-2xl bg-orbit-surface/95 p-6 md:p-7">
-              <span className="text-xs font-semibold text-violet-300/80">
+            <div className="h-full rounded-2xl bg-orbit-surface p-6 md:p-7">
+              <span className="text-xs font-semibold text-orbit-muted">
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <h3 className="mt-3 text-xl font-semibold text-zinc-50">{f.name}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{f.desc}</p>
+              <h3 className="mt-3 text-lg font-medium text-zinc-100">{f.name}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-orbit-muted">{f.desc}</p>
             </div>
           </div>
         ))}

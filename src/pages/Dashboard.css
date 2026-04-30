@@ -136,7 +136,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
 .dashboard__list-item {
@@ -152,7 +152,7 @@
 .dashboard__list-item:hover {
   border-color: var(--color-border-light);
   box-shadow: var(--shadow-md);
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 /* 본문 */

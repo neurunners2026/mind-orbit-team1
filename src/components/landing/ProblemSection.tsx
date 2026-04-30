@@ -30,8 +30,8 @@ export function ProblemSection() {
             className="reveal-on-scroll neon-hover-card rounded-2xl border border-orbit-border bg-orbit-surface/80 p-6 shadow-md shadow-black/25"
             style={{ ['--reveal-delay' as string]: `${120 + index * 90}ms` }}
           >
-            <h3 className="text-lg font-semibold text-zinc-50">{card.title}</h3>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            <h3 className="text-lg font-medium text-zinc-100">{card.title}</h3>
+            <p className="mt-3 text-sm leading-relaxed text-orbit-muted">
               {card.body}
             </p>
           </article>

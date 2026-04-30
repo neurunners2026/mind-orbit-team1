@@ -39,12 +39,12 @@ export default function Login() {
           </p>
         ) : null}
         <AuthForm mode="login" onAuthenticated={handleAuthenticated} />
-        <p className="mt-8 text-center text-sm text-zinc-500">
+        <p className="mt-8 text-center text-sm text-orbit-muted">
           계정이 없으신가요?{' '}
           <Link
             to="/signup"
             state={location.state}
-            className="font-medium text-violet-300 underline-offset-4 hover:text-violet-200 hover:underline"
+            className="font-medium text-orbit-accent underline-offset-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:underline"
           >
             회원가입
           </Link>

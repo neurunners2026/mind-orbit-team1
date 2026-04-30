@@ -17,10 +17,10 @@ const base =
 
 const variants: Record<CTAButtonVariant, string> = {
   primary:
-    'border border-violet-400/30 bg-orbit-accent text-white shadow-lg shadow-orbit-accent/25 hover:bg-orbit-accent-hover hover:border-violet-300/60',
+    'border border-orbit-border bg-orbit-accent text-white shadow-lg shadow-orbit-accent/25 hover:bg-orbit-accent-hover hover:border-orbit-accent',
   secondary:
-    'border border-orbit-border bg-orbit-surface text-zinc-100 hover:border-violet-400/60 hover:bg-orbit-surface-hover',
-  ghost: 'text-zinc-200 hover:bg-white/5',
+    'border border-orbit-border bg-orbit-surface text-zinc-100 hover:border-orbit-accent hover:bg-orbit-surface-hover',
+  ghost: 'text-orbit-muted hover:bg-orbit-surface-hover',
 }
 
 export function CTAButton({
