@@ -7,14 +7,12 @@ type NavbarProps = {
   showSectionNav?: boolean
   /** When true, shows an X button that navigates back to /. */
   showClose?: boolean
-  /** Called when the 로그인 button is clicked (landing page only). */
-  onLoginClick?: () => void
 }
 
 const navItemClass =
   'rounded-lg px-3 py-2 text-sm text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-zinc-100'
 
-export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
+export function Navbar({ showSectionNav = true, showClose = false }: NavbarProps) {
   const navigate = useNavigate()
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-orbit-bg/80 backdrop-blur-md">
