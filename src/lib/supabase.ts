@@ -76,12 +76,17 @@ import type { Mindmap, MindmapNodeData } from '../types/mindmap';
 
 /** DbMindmap → Mindmap (앱 내부 타입) */
 export function dbToMindmap(row: DbMindmap): Mindmap {
+  const edgeStyle =
+    row.edge_style === 'bezier' || row.edge_style === 'smoothstep'
+      ? row.edge_style
+      : undefined;
+
   return {
     id: row.id,
     title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    edgeStyle: row.edge_style ?? undefined,
+    edgeStyle,
     isFavorite: row.is_favorite,
   };
 }

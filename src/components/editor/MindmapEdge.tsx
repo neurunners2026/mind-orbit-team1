@@ -3,7 +3,6 @@ import {
   BaseEdge,
   getBezierPath,
   getSmoothStepPath,
-  getStraightPath,
   type EdgeProps,
 } from '@xyflow/react';
 import type { EdgeStyleId, EdgeStyleDef } from '../../types/mindmap';
@@ -15,19 +14,6 @@ interface PathParams {
   targetY: number;
   sourcePosition?: string;
   targetPosition?: string;
-}
-
-/**
- * 커스텀 organic 경로: 수평 출발 → 부드러운 곡선 → 수평 도착
- */
-function getOrganicPath({ sourceX, sourceY, targetX, targetY }: PathParams): string {
-  const dx = targetX - sourceX;
-  const cp1x = sourceX + dx * 0.4;
-  const cp1y = sourceY;
-  const cp2x = sourceX + dx * 0.6;
-  const cp2y = targetY;
-
-  return `M ${sourceX},${sourceY} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${targetX},${targetY}`;
 }
 
 const pathGenerators: Record<EdgeStyleId, (props: PathParams) => string> = {
@@ -42,19 +28,16 @@ const pathGenerators: Record<EdgeStyleId, (props: PathParams) => string> = {
     });
     return path;
   },
-  straight: (props) => {
-    const [path] = getStraightPath(props as Parameters<typeof getStraightPath>[0]);
-    return path;
-  },
-  organic: (props) => getOrganicPath(props),
 };
 
 export const EDGE_STYLES: EdgeStyleDef[] = [
-  { id: 'bezier', label: '곡선', icon: '~' },
-  { id: 'smoothstep', label: '계단', icon: '⌐' },
-  { id: 'straight', label: '직선', icon: '/' },
-  { id: 'organic', label: '유기적', icon: '∿' },
+  { id: 'bezier', label: '곡선', icon: 'curve' },
+  { id: 'smoothstep', label: '계단', icon: 'stairs' },
 ];
+
+function isEdgeStyleId(value: unknown): value is EdgeStyleId {
+  return value === 'bezier' || value === 'smoothstep';
+}
 
 /**
  * 마인드맵 커스텀 엣지 — data.edgeStyle로 스타일 전환
@@ -70,8 +53,8 @@ function MindmapEdge({
   selected,
   data,
 }: EdgeProps) {
-  const style = (data?.edgeStyle as EdgeStyleId) || 'bezier';
-  const getPath = pathGenerators[style] || pathGenerators.bezier;
+  const style = isEdgeStyleId(data?.edgeStyle) ? data.edgeStyle : 'bezier';
+  const getPath = pathGenerators[style];
 
   const edgePath = getPath({
     sourceX,

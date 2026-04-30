@@ -46,8 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
+    // Supabase는 보안상 이미 가입된 이메일을 등록 시도해도 error를 내지 않고
+    // data.user.identities를 빈 배열로 반환한다. (사용자 enumeration 방지)
+    // 이 경우 명확히 에러를 던져 UI가 실패로 처리하도록 함.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      throw new Error('이미 가입된 이메일입니다.');
+    }
   }
 
   async function signOut() {

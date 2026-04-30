@@ -1,21 +1,62 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { CTAButton } from './CTAButton'
 import { XIcon } from '../common/XIcon'
+import { useAuth } from '../../contexts/AuthContext'
 
 type NavbarProps = {
   /** When false, hides in-page anchor links (e.g. on auth pages). */
   showSectionNav?: boolean
   /** When true, shows an X button that navigates back to /. */
   showClose?: boolean
-  /** Called when the 로그인 button is clicked (landing page only). */
-  onLoginClick?: () => void
 }
 
 const navItemClass =
-  'rounded-lg px-3 py-2 text-sm text-orbit-muted transition-all duration-200 hover:-translate-y-0.5 hover:bg-orbit-surface-hover hover:text-zinc-100'
+  'rounded-lg px-3 py-2 text-sm text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-zinc-100'
 
-export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
+const loginButtonClass =
+  'inline-flex items-center justify-center gap-2 rounded-full border border-orbit-border bg-orbit-surface px-4 py-2 text-xs font-semibold tracking-tight text-zinc-100 transition-colors hover:border-violet-400/60 hover:bg-orbit-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orbit-accent sm:text-sm'
+
+export function Navbar({ showSectionNav = true, showClose = false }: NavbarProps) {
   const navigate = useNavigate()
+  const { session, loading, signOut } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+    } catch (err) {
+      console.error('로그아웃 실패:', err)
+    }
+  }
+
+  const renderAuthAction = () => {
+    if (loading) {
+      return <span className="h-9 w-24" aria-hidden />
+    }
+
+    if (session) {
+      return (
+        <>
+          <CTAButton
+            to="/dashboard"
+            variant="secondary"
+            className="px-4 py-2 text-xs sm:text-sm"
+          >
+            Dashboard
+          </CTAButton>
+          <CTAButton
+            variant="ghost"
+            className="px-4 py-2 text-xs sm:text-sm"
+            onClick={handleLogout}
+          >
+            Logout
+          </CTAButton>
+        </>
+      )
+    }
+
+    return <Link to="/login" className={loginButtonClass}>Login</Link>
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-orbit-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -24,7 +65,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
           className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100 transition-transform duration-200 hover:-translate-y-0.5"
         >
           <span
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-orbit-accent shadow-md shadow-orbit-accent/40"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 shadow-md shadow-violet-600/40"
             aria-hidden
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -42,24 +83,15 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             className="hidden items-center gap-1 md:flex"
             aria-label="섹션 이동"
           >
-            <a className={navItemClass} href="#hero">
-              소개
-            </a>
             <a className={navItemClass} href="#problem">
-              문제
+              Problem
             </a>
-            <a className={navItemClass} href="#features">
-              기능
-            </a>
-            <a className={navItemClass} href="#target">
-              대상
-            </a>
-            <a className={navItemClass} href="#cta">
-              시작
+            <a className={navItemClass} href="#solution">
+              Features
             </a>
           </nav>
         ) : (
-          <span className="hidden text-sm text-orbit-muted md:inline">
+          <span className="hidden text-sm text-zinc-500 md:inline">
             계정
           </span>
         )}
@@ -74,12 +106,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
               <XIcon />
             </button>
           ) : (
-            <CTAButton onClick={onLoginClick}
-              variant="secondary"
-              className="px-4 py-2 text-xs transition-all duration-200 ease-out hover:-translate-y-0.5 sm:text-sm"
-            >
-              로그인
-            </CTAButton>
+            renderAuthAction()
           )}
         </div>
       </div>
