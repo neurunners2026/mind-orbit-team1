@@ -74,7 +74,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
               <XIcon />
             </button>
           ) : (
-            <CTAButton
+            <CTAButton onClick={onLoginClick}
               variant="secondary"
               className="px-4 py-2 text-xs transition-all duration-200 ease-out hover:-translate-y-0.5 sm:text-sm"
             >
