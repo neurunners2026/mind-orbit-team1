@@ -1,19 +1,16 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Navbar } from '../components/landing/Navbar'
 import { HeroSection } from '../components/landing/HeroSection'
 import { ProblemSection } from '../components/landing/ProblemSection'
-import { FeatureSection } from '../components/landing/FeatureSection'
+import { PositioningSection } from '../components/landing/PositioningSection'
+import { BrandStatement } from '../components/landing/BrandStatement'
+import { SolutionSection } from '../components/landing/SolutionSection'
+import { SocialProofSection } from '../components/landing/SocialProofSection'
 import { TargetSection } from '../components/landing/TargetSection'
 import { CtaSection } from '../components/landing/CtaSection'
 import { Footer } from '../components/landing/Footer'
-import { LoginModal } from '../components/auth/LoginModal'
 
 export default function Landing() {
-  const [showLogin, setShowLogin] = useState(false)
-
-  const openLogin = useCallback(() => setShowLogin(true), [])
-  const closeLogin = useCallback(() => setShowLogin(false), [])
-
   useEffect(() => {
     const elements = Array.from(
       document.querySelectorAll<HTMLElement>('.reveal-on-scroll'),
@@ -39,16 +36,18 @@ export default function Landing() {
 
   return (
     <div className="min-h-dvh bg-orbit-bg">
-      <Navbar showSectionNav onLoginClick={openLogin} />
+      <Navbar showSectionNav />
       <main>
-        <HeroSection onLoginClick={openLogin} />
+        <HeroSection />
         <ProblemSection />
-        <FeatureSection />
+        <PositioningSection />
+        <BrandStatement />
+        <SolutionSection />
+        <SocialProofSection />
         <TargetSection />
-        <CtaSection onLoginClick={openLogin} />
+        <CtaSection />
       </main>
       <Footer />
-      {showLogin && <LoginModal onClose={closeLogin} />}
     </div>
   )
 }
