@@ -66,7 +66,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
       className="space-y-5 rounded-2xl border border-orbit-border bg-orbit-surface/80 p-8 shadow-xl shadow-black/30 backdrop-blur-sm"
     >
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">{title}</h1>
       </div>
 
       {error ? (
@@ -79,7 +79,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
       ) : null}
 
       <div className="space-y-1.5">
-        <label htmlFor="auth-email" className="text-sm font-medium text-zinc-100">
+        <label htmlFor="auth-email" className="text-sm font-medium text-zinc-200">
           이메일
         </label>
         <input
@@ -89,14 +89,14 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
           autoComplete="email"
           value={email}
           onChange={(ev) => setEmail(ev.target.value)}
-          className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-orbit-muted focus:border-orbit-accent focus:ring-2"
+          className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-zinc-600 focus:border-orbit-accent focus:ring-2"
           placeholder="you@example.com"
           required
         />
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="auth-password" className="text-sm font-medium text-zinc-100">
+        <label htmlFor="auth-password" className="text-sm font-medium text-zinc-200">
           비밀번호
         </label>
         <input
@@ -106,7 +106,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
           autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           value={password}
           onChange={(ev) => setPassword(ev.target.value)}
-          className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-orbit-muted focus:border-orbit-accent focus:ring-2"
+          className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-zinc-600 focus:border-orbit-accent focus:ring-2"
           placeholder="••••••••"
           required
         />
@@ -114,7 +114,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
 
       {mode === 'signup' ? (
         <div className="space-y-1.5">
-          <label htmlFor="auth-confirm" className="text-sm font-medium text-zinc-100">
+          <label htmlFor="auth-confirm" className="text-sm font-medium text-zinc-200">
             비밀번호 확인
           </label>
           <input
@@ -124,7 +124,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
             autoComplete="new-password"
             value={confirm}
             onChange={(ev) => setConfirm(ev.target.value)}
-            className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-orbit-muted focus:border-orbit-accent focus:ring-2"
+            className="w-full rounded-xl border border-orbit-border bg-orbit-bg/80 px-4 py-3 text-sm text-zinc-100 outline-none ring-orbit-accent/40 transition placeholder:text-zinc-600 focus:border-orbit-accent focus:ring-2"
             placeholder="••••••••"
           />
         </div>
@@ -133,7 +133,7 @@ export function AuthForm({ mode, onAuthenticated }: AuthFormProps) {
       <button
         type="submit"
         disabled={submitting}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-orbit-accent py-3 text-sm font-semibold text-white shadow-lg shadow-orbit-accent/25 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-orbit-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orbit-accent disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-orbit-accent py-3 text-sm font-semibold text-white shadow-lg shadow-orbit-accent/25 transition hover:bg-orbit-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orbit-accent disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? <Spinner /> : null}
         {submitting ? '처리 중…' : mode === 'login' ? '로그인하기' : '가입 완료하기'}

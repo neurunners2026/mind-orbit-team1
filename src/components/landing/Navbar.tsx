@@ -12,7 +12,7 @@ type NavbarProps = {
 }
 
 const navItemClass =
-  'rounded-lg px-3 py-2 text-sm text-orbit-muted transition-all duration-200 hover:-translate-y-0.5 hover:bg-orbit-surface-hover hover:text-zinc-100'
+  'rounded-lg px-3 py-2 text-sm text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-zinc-100'
 
 export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
   const navigate = useNavigate()
@@ -24,7 +24,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
           className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100 transition-transform duration-200 hover:-translate-y-0.5"
         >
           <span
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-orbit-accent shadow-md shadow-orbit-accent/40"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 shadow-md shadow-violet-600/40"
             aria-hidden
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -59,7 +59,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             </a>
           </nav>
         ) : (
-          <span className="hidden text-sm text-orbit-muted md:inline">
+          <span className="hidden text-sm text-zinc-500 md:inline">
             계정
           </span>
         )}
@@ -74,9 +74,10 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
               <XIcon />
             </button>
           ) : (
-            <CTAButton onClick={onLoginClick}
+            <CTAButton
               variant="secondary"
-              className="px-4 py-2 text-xs transition-all duration-200 ease-out hover:-translate-y-0.5 sm:text-sm"
+              className="px-4 py-2 text-xs sm:text-sm"
+              onClick={onLoginClick}
             >
               로그인
             </CTAButton>
