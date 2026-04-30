@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { CTAButton } from './CTAButton'
 import { XIcon } from '../common/XIcon'
+import { useAuth } from '../../contexts/AuthContext'
 
 type NavbarProps = {
   /** When false, hides in-page anchor links (e.g. on auth pages). */
@@ -16,6 +17,53 @@ const navItemClass =
 
 export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
   const navigate = useNavigate()
+  const { session, loading, signOut } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+    } catch (err) {
+      console.error('로그아웃 실패:', err)
+    }
+  }
+
+  const renderAuthAction = () => {
+    if (loading) {
+      return <span className="h-9 w-24" aria-hidden />
+    }
+
+    if (session) {
+      return (
+        <>
+          <CTAButton
+            to="/dashboard"
+            variant="secondary"
+            className="px-4 py-2 text-xs sm:text-sm"
+          >
+            Dashboard
+          </CTAButton>
+          <CTAButton
+            variant="ghost"
+            className="px-4 py-2 text-xs sm:text-sm"
+            onClick={handleLogout}
+          >
+            Logout
+          </CTAButton>
+        </>
+      )
+    }
+
+    return (
+      <CTAButton
+        variant="secondary"
+        className="px-4 py-2 text-xs sm:text-sm"
+        onClick={onLoginClick}
+      >
+        Login
+      </CTAButton>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-orbit-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -42,20 +90,17 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             className="hidden items-center gap-1 md:flex"
             aria-label="섹션 이동"
           >
-            <a className={navItemClass} href="#hero">
-              소개
-            </a>
             <a className={navItemClass} href="#problem">
-              문제
+              Problem
             </a>
             <a className={navItemClass} href="#features">
-              기능
+              Features
             </a>
             <a className={navItemClass} href="#target">
-              대상
+              Target
             </a>
             <a className={navItemClass} href="#cta">
-              시작
+              Start
             </a>
           </nav>
         ) : (
@@ -74,13 +119,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
               <XIcon />
             </button>
           ) : (
-            <CTAButton
-              variant="secondary"
-              className="px-4 py-2 text-xs sm:text-sm"
-              onClick={onLoginClick}
-            >
-              로그인
-            </CTAButton>
+            renderAuthAction()
           )}
         </div>
       </div>
