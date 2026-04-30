@@ -1,15 +1,28 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 @import "tailwindcss";
+
+/* =========================
+   Mind Orbit Design System
+   ========================= */
 
 @theme {
   --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, sans-serif;
+
   --color-orbit-bg: #0f0f14;
   --color-orbit-surface: #1a1a24;
   --color-orbit-surface-hover: #22222e;
+
   --color-orbit-border: #2e2e3a;
+
   --color-orbit-muted: #9898a8;
+
   --color-orbit-accent: #6c5ce7;
   --color-orbit-accent-hover: #7c6cf7;
 }
+
+/* =========================
+   Global Layout
+   ========================= */
 
 html {
   scroll-behavior: smooth;
@@ -18,19 +31,28 @@ html {
 body {
   @apply bg-orbit-bg text-zinc-100 antialiased;
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  line-height: 1.55;
 }
 
 #root {
   min-height: 100dvh;
 }
 
+/* =========================
+   Scroll Reveal Animation
+   ========================= */
+
 .reveal-on-scroll {
   opacity: 0;
-  filter: blur(8px);
-  transform: translateY(40px);
-  transition: opacity 820ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 820ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 820ms cubic-bezier(0.22, 1, 0.36, 1);
+  filter: blur(6px);
+  transform: translateY(24px);
+
+  transition:
+    opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 620ms cubic-bezier(0.22, 1, 0.36, 1);
+
   transition-delay: var(--reveal-delay, 0ms);
   will-change: opacity, transform, filter;
 }
@@ -41,41 +63,58 @@ body {
   transform: translateY(0);
 }
 
+/* =========================
+   Card Hover Interaction
+   ========================= */
+
 .neon-hover-card {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    transform 260ms ease-out,
+    box-shadow 260ms ease-out,
+    border-color 260ms ease-out,
+    background-color 260ms ease-out;
 }
 
 .neon-hover-card:hover {
-  transform: translateY(-8px);
-  border-color: rgba(139, 92, 246, 0.62);
-  box-shadow: 0 0 28px rgba(139, 92, 246, 0.45), 0 0 72px rgba(139, 92, 246, 0.22);
+  transform: translateY(-3px);
+  border-color: rgba(108, 92, 231, 0.45);
+  box-shadow: 0 8px 24px rgba(108, 92, 231, 0.18);
 }
 
+/* =========================
+   Button Hover Interaction
+   ========================= */
+
 .neon-hover-button {
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 360ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 360ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out,
+    border-color 200ms ease-out,
+    background-color 200ms ease-out;
 }
 
 .neon-hover-button:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 0 28px rgba(139, 92, 246, 0.45), 0 0 72px rgba(139, 92, 246, 0.22);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(108, 92, 231, 0.22);
 }
 
+/* =========================
+   Link Hover Interaction
+   ========================= */
+
 .neon-hover-link {
-  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    transform 180ms ease-out,
+    color 180ms ease-out;
 }
 
 .neon-hover-link:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 0 22px rgba(139, 92, 246, 0.42);
+  transform: translateY(-2px);
 }
+
+/* =========================
+   Hero Floating Motion
+   ========================= */
 
 .hero-float-orb {
   animation: heroFloat 9s ease-in-out infinite;
@@ -86,26 +125,30 @@ body {
 }
 
 @keyframes heroFloat {
-  0%,
-  100% {
+  0%, 100% {
     transform: translateY(0) translateX(0);
   }
+
   50% {
-    transform: translateY(-16px) translateX(8px);
+    transform: translateY(-10px) translateX(6px);
   }
 }
 
 @keyframes heroParticle {
-  0%,
-  100% {
+  0%, 100% {
     transform: translateY(0) scale(1);
     opacity: 0.35;
   }
+
   50% {
-    transform: translateY(-14px) scale(1.08);
-    opacity: 0.75;
+    transform: translateY(-10px) scale(1.05);
+    opacity: 0.7;
   }
 }
+
+/* =========================
+   Reduced Motion Support
+   ========================= */
 
 @media (prefers-reduced-motion: reduce) {
   html {
