@@ -48,10 +48,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             <a className={navItemClass} href="#problem">
               문제
             </a>
-            <a className={navItemClass} href="#positioning">
-              포지셔닝
-            </a>
-            <a className={navItemClass} href="#features">
+            <a className={navItemClass} href="#solution">
               기능
             </a>
             <a className={navItemClass} href="#target">
@@ -80,7 +77,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             <CTAButton
               variant="secondary"
               className="px-4 py-2 text-xs sm:text-sm"
-              onClick={onLoginClick}
+              to="/login"
             >
               로그인
             </CTAButton>

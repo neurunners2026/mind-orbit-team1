@@ -1,10 +1,6 @@
 import { CTAButton } from './CTAButton'
 
-type HeroSectionProps = {
-  onLoginClick: () => void
-}
-
-export function HeroSection({ onLoginClick: _onLoginClick }: HeroSectionProps) {
+export function HeroSection() {
   return (
     <section
       id="hero"
@@ -46,10 +42,10 @@ export function HeroSection({ onLoginClick: _onLoginClick }: HeroSectionProps) {
 
         <div className="reveal-on-scroll mx-auto mt-16 max-w-sm [--reveal-delay:200ms]">
           <div className="rounded-2xl border border-white/[0.08] bg-orbit-surface/40 p-2 shadow-2xl shadow-violet-900/20 backdrop-blur-sm">
-            <img
-              src=""
-              alt="Mind Orbit 앱 화면 미리보기"
-              className="mockup-img w-full rounded-xl bg-orbit-surface/60 object-cover"
+            <div
+              role="img"
+              aria-label="Mind Orbit 앱 화면 미리보기"
+              className="mockup-img w-full rounded-xl bg-orbit-surface/60"
               style={{ minHeight: '220px' }}
             />
           </div>

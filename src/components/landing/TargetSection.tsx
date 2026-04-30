@@ -1,62 +1,29 @@
 import { LandingSection } from './LandingSection'
 
 const audiences = [
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-      </svg>
-    ),
-    title: '아이디어가 자꾸 흩어지는 분',
-    description: '메모는 하는데 나중에 찾기 어렵고, 연결이 안 된다고 느끼는 분',
-  },
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-      </svg>
-    ),
-    title: '생각은 많은데 정리가 어려운 분',
-    description: '아이디어는 넘치는데 막상 쓰려고 하면 머릿속이 복잡해지는 분',
-  },
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-    title: '복잡한 툴은 부담스러운 분',
-    description: '메모 앱은 부족하고 무거운 협업 툴은 과한, 딱 중간이 필요한 분',
-  },
-  {
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-    title: '생각을 나누고 싶은 분',
-    description: '내 생각을 다른 사람에게 쉽게 보여주고 함께 발전시키고 싶은 분',
-  },
+  '메모앱으로는 부족하고, Notion 열기엔 너무 작은 생각이 있는 분',
+  '아이디어가 모바일에서 자주 떠오르는 분',
+  '결과물이 보기 좋아야 다시 열게 되는 분',
+  '내 생각을 링크 하나로 바로 나누고 싶은 분',
 ]
 
 export function TargetSection() {
   return (
     <LandingSection
       id="target"
-      title="이런 분들을 위해 만들었습니다"
+      title="이런 상황이라면, Mind Orbit이 맞습니다"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        {audiences.map((item, index) => (
+        {audiences.map((text, index) => (
           <div
-            key={item.title}
-            className="reveal-on-scroll neon-hover-card flex flex-col gap-3 rounded-2xl border border-orbit-border bg-orbit-surface/50 p-6 md:p-7"
+            key={text}
+            className="reveal-on-scroll neon-hover-card flex items-start gap-4 rounded-2xl border border-orbit-border bg-orbit-surface/50 px-6 py-5"
             style={{ ['--reveal-delay' as string]: `${120 + index * 80}ms` }}
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/80 text-white">
-              {item.icon}
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600/80 text-xs font-bold text-white">
+              {index + 1}
             </span>
-            <h3 className="text-base font-semibold text-white">{item.title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-400">{item.description}</p>
+            <p className="text-sm leading-relaxed text-zinc-200">{text}</p>
           </div>
         ))}
       </div>
