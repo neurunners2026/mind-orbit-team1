@@ -11,7 +11,7 @@ export function TargetSection() {
   return (
     <LandingSection
       id="target"
-      title="이런 상황이라면, Mind Orbit이 맞습니다"
+      title="혹시 이런 분이라면"
     >
       <div className="grid gap-4 sm:grid-cols-2">
         {audiences.map((text, index) => (

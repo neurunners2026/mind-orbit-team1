@@ -3,6 +3,7 @@ import { Navbar } from '../components/landing/Navbar'
 import { HeroSection } from '../components/landing/HeroSection'
 import { ProblemSection } from '../components/landing/ProblemSection'
 import { PositioningSection } from '../components/landing/PositioningSection'
+import { BrandStatement } from '../components/landing/BrandStatement'
 import { SolutionSection } from '../components/landing/SolutionSection'
 import { SocialProofSection } from '../components/landing/SocialProofSection'
 import { TargetSection } from '../components/landing/TargetSection'
@@ -40,6 +41,7 @@ export default function Landing() {
         <HeroSection />
         <ProblemSection />
         <PositioningSection />
+        <BrandStatement />
         <SolutionSection />
         <SocialProofSection />
         <TargetSection />
