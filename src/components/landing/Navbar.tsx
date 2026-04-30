@@ -8,8 +8,6 @@ type NavbarProps = {
   showSectionNav?: boolean
   /** When true, shows an X button that navigates back to /. */
   showClose?: boolean
-  /** Called when the 로그인 button is clicked (landing page only). */
-  onLoginClick?: () => void
 }
 
 const navItemClass =
@@ -18,7 +16,7 @@ const navItemClass =
 const loginButtonClass =
   'inline-flex items-center justify-center gap-2 rounded-full border border-orbit-border bg-orbit-surface px-4 py-2 text-xs font-semibold tracking-tight text-zinc-100 transition-colors hover:border-violet-400/60 hover:bg-orbit-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orbit-accent sm:text-sm'
 
-export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
+export function Navbar({ showSectionNav = true, showClose = false }: NavbarProps) {
   const navigate = useNavigate()
   const { session, loading, signOut } = useAuth()
 
@@ -56,11 +54,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
       )
     }
 
-    return (
-      <button type="button" className={loginButtonClass} onClick={onLoginClick}>
-        Login
-      </button>
-    )
+    return <Link to="/login" className={loginButtonClass}>Login</Link>
   }
 
   return (
@@ -92,7 +86,7 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             <a className={navItemClass} href="#problem">
               Problem
             </a>
-            <a className={navItemClass} href="#features">
+            <a className={navItemClass} href="#solution">
               Features
             </a>
           </nav>

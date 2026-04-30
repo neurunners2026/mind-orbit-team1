@@ -1,10 +1,6 @@
 import { CTAButton } from './CTAButton'
 
-type CtaSectionProps = {
-  onLoginClick: () => void
-}
-
-export function CtaSection({ onLoginClick }: CtaSectionProps) {
+export function CtaSection() {
   return (
     <section
       id="cta"
@@ -20,14 +16,15 @@ export function CtaSection({ onLoginClick }: CtaSectionProps) {
             <div className="absolute -bottom-16 left-10 h-56 w-56 rounded-full bg-indigo-500/25 blur-3xl" />
           </div>
           <div className="relative mx-auto max-w-2xl">
-            <p className="reveal-on-scroll text-xs font-semibold uppercase tracking-[0.2em] text-violet-200/90">
-              Mind Orbit
-            </p>
-            <h2 className="reveal-on-scroll mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl [--reveal-delay:90ms]">
-              생각이 흩어지기 전에 Mind Orbit을 경험해보세요
+            <h2 className="reveal-on-scroll text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              생각이 흩어지기 전에
             </h2>
-            <div className="reveal-on-scroll mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row [--reveal-delay:150ms]">
-              <CTAButton onClick={onLoginClick}>지금 바로 사용해보기</CTAButton>
+            <p className="reveal-on-scroll mt-4 text-base leading-relaxed text-zinc-400 [--reveal-delay:80ms]">
+              지금은 베타 단계입니다. 먼저 써보고, 함께 만들어가요.
+            </p>
+            <div className="reveal-on-scroll mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row [--reveal-delay:140ms]">
+              <CTAButton to="/dashboard">베타 버전 써보기 →</CTAButton>
+              <CTAButton variant="secondary" href="#hero">둘러보기</CTAButton>
             </div>
           </div>
         </div>
