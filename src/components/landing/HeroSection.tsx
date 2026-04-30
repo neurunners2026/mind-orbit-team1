@@ -4,7 +4,7 @@ type HeroSectionProps = {
   onLoginClick: () => void
 }
 
-export function HeroSection({ onLoginClick }: HeroSectionProps) {
+export function HeroSection({ onLoginClick: _onLoginClick }: HeroSectionProps) {
   return (
     <section
       id="hero"
@@ -25,38 +25,34 @@ export function HeroSection({ onLoginClick }: HeroSectionProps) {
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="reveal-on-scroll text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl md:leading-[1.08]">
-            복잡한 아이디어를
+          <h1 className="reveal-on-scroll text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl md:leading-[1.1]">
+            생각은 많은데,
             <span className="block bg-gradient-to-r from-violet-300 via-white to-indigo-200 bg-clip-text text-transparent">
-              한눈에 연결하세요
+              정리할 도구가 없었다
             </span>
           </h1>
-          <div className="reveal-on-scroll mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 [--reveal-delay:120ms]">
-            <CTAButton onClick={onLoginClick}>지금 바로 사용해보기</CTAButton>
+
+          <p className="reveal-on-scroll mt-6 text-base leading-relaxed text-zinc-400 sm:text-lg [--reveal-delay:80ms]">
+            메모 앱으로는 부족하고, 협업 툴은 너무 무거운.
+            <br className="hidden sm:block" />
+            Mind Orbit은 그 사이를 채웁니다.
+          </p>
+
+          <div className="reveal-on-scroll mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 [--reveal-delay:140ms]">
+            <CTAButton to="/dashboard">베타 버전 써보기 →</CTAButton>
+            <CTAButton variant="secondary" href="#problem">둘러보기</CTAButton>
           </div>
         </div>
 
-        <div className="mx-auto mt-16 max-w-lg reveal-on-scroll [--reveal-delay:180ms]">
-          <p className="mb-5 text-center text-sm font-medium text-zinc-500">
-            혹시 이런 적 있나요?
-          </p>
-          <ul className="space-y-3">
-            {[
-              '메모는 했는데 어디 있는지 모르겠다',
-              '정리하려다 오히려 멈춘 적 있다',
-              '아이디어는 많은데 연결이 안 된다',
-              '쓰려고 보면 머릿속이 다시 복잡해진다',
-            ].map((text, index) => (
-              <li
-                key={text}
-                className="reveal-on-scroll neon-hover-card flex items-center gap-3 rounded-xl border border-white/[0.07] bg-orbit-surface/50 px-5 py-4 text-sm text-zinc-300 backdrop-blur-sm hover:bg-orbit-surface/70"
-                style={{ ['--reveal-delay' as string]: `${220 + index * 70}ms` }}
-              >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
-                {text}
-              </li>
-            ))}
-          </ul>
+        <div className="reveal-on-scroll mx-auto mt-16 max-w-sm [--reveal-delay:200ms]">
+          <div className="rounded-2xl border border-white/[0.08] bg-orbit-surface/40 p-2 shadow-2xl shadow-violet-900/20 backdrop-blur-sm">
+            <img
+              src=""
+              alt="Mind Orbit 앱 화면 미리보기"
+              className="mockup-img w-full rounded-xl bg-orbit-surface/60 object-cover"
+              style={{ minHeight: '220px' }}
+            />
+          </div>
         </div>
       </div>
     </section>

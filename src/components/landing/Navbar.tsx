@@ -48,6 +48,9 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             <a className={navItemClass} href="#problem">
               문제
             </a>
+            <a className={navItemClass} href="#positioning">
+              포지셔닝
+            </a>
             <a className={navItemClass} href="#features">
               기능
             </a>
