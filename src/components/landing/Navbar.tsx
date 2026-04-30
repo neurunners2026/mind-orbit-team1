@@ -15,6 +15,9 @@ type NavbarProps = {
 const navItemClass =
   'rounded-lg px-3 py-2 text-sm text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-zinc-100'
 
+const loginButtonClass =
+  'inline-flex items-center justify-center gap-2 rounded-full border border-orbit-border bg-orbit-surface px-4 py-2 text-xs font-semibold tracking-tight text-zinc-100 transition-colors hover:border-violet-400/60 hover:bg-orbit-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orbit-accent sm:text-sm'
+
 export function Navbar({ showSectionNav = true, showClose = false, onLoginClick }: NavbarProps) {
   const navigate = useNavigate()
   const { session, loading, signOut } = useAuth()
@@ -54,13 +57,9 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
     }
 
     return (
-      <CTAButton
-        variant="secondary"
-        className="px-4 py-2 text-xs sm:text-sm"
-        onClick={onLoginClick}
-      >
+      <button type="button" className={loginButtonClass} onClick={onLoginClick}>
         Login
-      </CTAButton>
+      </button>
     )
   }
 
@@ -95,12 +94,6 @@ export function Navbar({ showSectionNav = true, showClose = false, onLoginClick 
             </a>
             <a className={navItemClass} href="#features">
               Features
-            </a>
-            <a className={navItemClass} href="#target">
-              Target
-            </a>
-            <a className={navItemClass} href="#cta">
-              Start
             </a>
           </nav>
         ) : (

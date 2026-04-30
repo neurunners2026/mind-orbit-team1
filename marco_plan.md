@@ -15,11 +15,10 @@
 
 - Hero 섹션 링크는 제거한다.
 - 브랜드 로고 `Mind Orbit`은 기존처럼 `/` 이동 역할을 유지한다.
-- 섹션 링크는 영문 Eyebrow 흐름에 맞춘다.
+- 섹션 링크는 영문 Eyebrow 흐름에 맞추되, 상단 네비게이션은 핵심 섹션만 노출한다.
   - `#problem` → `Problem`
   - `#features` → `Features`
-  - `#target` → `Target`
-  - `#cta` → `Start`
+- `Target`, `Start`는 랜딩 본문에는 유지하지만 네비게이션에는 표시하지 않는다.
 
 ## 인증 상태별 액션
 
@@ -30,7 +29,7 @@
 
 ## 테스트 시나리오
 
-- 비로그인 랜딩에서 nav 항목이 `Problem`, `Features`, `Target`, `Start`로 보이는지 확인한다.
+- 비로그인 랜딩에서 nav 항목이 `Problem`, `Features`로만 보이는지 확인한다.
 - 각 nav 항목 클릭 시 해당 섹션으로 스크롤되는지 확인한다.
 - `Login` 클릭 시 기존 로그인 모달이 열리는지 확인한다.
 - 로그인 후 오른쪽 액션이 `Dashboard`, `Logout`으로 전환되는지 확인한다.
