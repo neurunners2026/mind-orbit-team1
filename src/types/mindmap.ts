@@ -40,13 +40,13 @@ export type RFNodeData = {
 };
 
 /** 엣지 스타일 ID */
-export type EdgeStyleId = 'bezier' | 'smoothstep' | 'straight' | 'organic';
+export type EdgeStyleId = 'bezier' | 'smoothstep';
 
 /** 엣지 스타일 정의 */
 export interface EdgeStyleDef {
   id: EdgeStyleId;
   label: string;
-  icon: string;
+  icon: 'curve' | 'stairs';
 }
 
 /** 탭 간 동기화 메시지 */

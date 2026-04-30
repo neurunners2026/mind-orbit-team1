@@ -45,6 +45,43 @@ const nodeTypes = { mindmap: MindmapNode };
 const edgeTypes = { mindmap: MindmapEdge };
 const defaultEdgeOptions = { type: 'mindmap', animated: false };
 
+function EdgeStyleIcon({ icon }: { icon: 'curve' | 'stairs' }) {
+  if (icon === 'curve') {
+    return (
+      <svg
+        className="editor__edge-style-icon editor__edge-style-icon--curve"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden
+      >
+        <path
+          d="M4 16C8 5 15 19 20 8"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      className="editor__edge-style-icon editor__edge-style-icon--stairs"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M4 18H9V14H14V10H19V6"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function EditorInner() {
   const { mapId } = useParams<{ mapId: string }>();
   const navigate = useNavigate();
@@ -57,6 +94,10 @@ function EditorInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyleId>('bezier');
+  const [historyState, setHistoryState] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
 
   // 미선택 시 루트 노드를 "사실상 선택된 노드"로 취급
   const rootNodeId = rfNodes.find((n) => n.data.isRoot)?.id ?? null;
@@ -73,6 +114,13 @@ function EditorInner() {
   // Undo/Redo 스택 + 드래그 시작 스냅샷
   // ==========================================
   const historyRef = useRef<HistoryStack>(new HistoryStack());
+  const syncHistoryState = useCallback(() => {
+    setHistoryState({
+      canUndo: historyRef.current.canUndo(),
+      canRedo: historyRef.current.canRedo(),
+    });
+  }, []);
+
   const dragStartRef = useRef<{
     nodeId: string;
     before: PersistedNode[];
@@ -375,8 +423,9 @@ function EditorInner() {
       nodeId?: string,
     ) => {
       historyRef.current.push({ type, nodeId, before, after });
+      syncHistoryState();
     },
-    [],
+    [syncHistoryState],
   );
 
   const restoreFromSnapshot = useCallback(
@@ -515,6 +564,7 @@ function EditorInner() {
         isInitialized.current = true;
         // 외부에서 데이터가 갱신되었으므로 history는 stale → 초기화
         historyRef.current.clear();
+        syncHistoryState();
 
         if (
           isInitial &&
@@ -535,7 +585,7 @@ function EditorInner() {
         if (isInitial) setLoading(false);
       }
     },
-    [mapId, navigate, applyLayout, refreshVisibility, fitView],
+    [mapId, navigate, applyLayout, refreshVisibility, fitView, syncHistoryState],
   );
 
   useEffect(() => {
@@ -906,21 +956,23 @@ function EditorInner() {
   // ==========================================
   const undo = useCallback(() => {
     const entry = historyRef.current.undo();
+    syncHistoryState();
     if (!entry) return;
     restoreFromSnapshot(entry.before);
     setSelectedNodeId(null);
     refreshVisibility();
     triggerAutoSave();
-  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave]);
+  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave, syncHistoryState]);
 
   const redo = useCallback(() => {
     const entry = historyRef.current.redo();
+    syncHistoryState();
     if (!entry) return;
     restoreFromSnapshot(entry.after);
     setSelectedNodeId(null);
     refreshVisibility();
     triggerAutoSave();
-  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave]);
+  }, [restoreFromSnapshot, refreshVisibility, triggerAutoSave, syncHistoryState]);
 
   // ==========================================
   // 노드 삽입 공통 로직: allNodesRef에 추가 → 위치 계산 → 선택 → 편집 진입
@@ -1237,7 +1289,7 @@ function EditorInner() {
                   onClick={() => setEdgeStyle(s.id)}
                   title={s.label}
                 >
-                  {s.icon}
+                  <EdgeStyleIcon icon={s.icon} />
                 </button>
               ))}
             </div>
@@ -1264,6 +1316,44 @@ function EditorInner() {
       {/* 플로팅 FAB — position:fixed 컨테이너를 VV API로 visual viewport에 동기화.
            내부 FAB은 position:absolute; bottom:X 로 배치하여 키보드 위에 안정적으로 표시. */}
       <div className="editor__fabs" ref={fabContainerRef}>
+        {/* 좌측 하단: Undo / Redo — 모바일 삭제 FAB와 겹치지 않도록 한 칸 위에 배치 */}
+        <div className="editor__history-fabs" aria-label="실행 취소 및 다시 실행">
+          <button
+            className="editor__fab editor__fab--history"
+            onClick={undo}
+            disabled={!historyState.canUndo}
+            title="실행 취소 (Ctrl/Cmd+Z)"
+            aria-label="실행 취소"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 7H4v5M4.5 11A7.5 7.5 0 1012 4.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            className="editor__fab editor__fab--history"
+            onClick={redo}
+            disabled={!historyState.canRedo}
+            title="다시 실행 (Ctrl/Cmd+Shift+Z)"
+            aria-label="다시 실행"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M15 7h5v5M19.5 11A7.5 7.5 0 1112 4.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
         {/* 좌측 하단: 삭제 */}
         <button
           className="editor__fab editor__fab--delete"

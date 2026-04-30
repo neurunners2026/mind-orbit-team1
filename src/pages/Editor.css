@@ -164,10 +164,38 @@
   color: var(--color-accent);
 }
 
-/* PC에서는 FAB 숨기고 키보드 힌트만 표시 */
+/* Undo/Redo FAB — 모바일 삭제 FAB와 겹치지 않도록 삭제 버튼 위쪽에 배치 */
+.editor__history-fabs {
+  pointer-events: none;
+  position: absolute;
+  left: var(--spacing-md);
+  bottom: calc(var(--spacing-md) + 56px + var(--spacing-sm));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.editor__history-fabs .editor__fab {
+  pointer-events: auto;
+  position: static;
+  width: 44px;
+  height: 44px;
+}
+
+.editor__fab--history:hover:not(:disabled) {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+/* PC에서는 모바일 추가/삭제 FAB만 숨기고 Undo/Redo는 클릭용으로 유지 */
 @media (min-width: 768px) {
-  .editor__fabs {
+  .editor__fab--delete,
+  .editor__fab-group-right {
     display: none;
+  }
+
+  .editor__history-fabs {
+    bottom: var(--spacing-md);
   }
 }
 
@@ -203,6 +231,22 @@
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
+}
+
+.editor__edge-style-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.editor__edge-style-icon--curve {
+  width: 26px;
+  height: 26px;
+}
+
+.editor__edge-style-icon--stairs {
+  width: 21px;
+  height: 21px;
 }
 
 .editor__edge-style-btn:hover {
